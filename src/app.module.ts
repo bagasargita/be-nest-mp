@@ -5,6 +5,8 @@ import { User } from './core/domain/entities/user.entity';
 import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './infrastructure/guards/auth.guard';
+import { ServiceModule } from './services/service.module';
+import { Service } from './services/service.entity';
 
 @Module({
   imports: [
@@ -20,12 +22,13 @@ import { JwtAuthGuard } from './infrastructure/guards/auth.guard';
         username: configService.get('DB_USERNAME', 'postgres'),
         password: configService.get('DB_PASSWORD', 'postgres'),
         database: configService.get('DB_DATABASE', 'wms'),
-        entities: [User],
+        entities: [User, Service],
         synchronize: configService.get('NODE_ENV', 'development') === 'development',
       }),
       inject: [ConfigService],
     }),
     AuthModule,
+    ServiceModule,
   ],
   providers: [
     {
