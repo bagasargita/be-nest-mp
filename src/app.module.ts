@@ -7,6 +7,11 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './infrastructure/guards/auth.guard';
 import { ServiceModule } from './services/service.module';
 import { Service } from './services/service.entity';
+import { AccountModule } from './account/account.module';
+import { AccountTypeModule } from './accounttype/accounttype.module';
+import { BankModule } from './bank/bank.module';
+import { BankCategoryModule } from './bank-category/bank-category.module';
+import { TypeOfBusinessModule } from './type-of-business/type-of-business.module';
 
 @Module({
   imports: [
@@ -29,6 +34,11 @@ import { Service } from './services/service.entity';
     }),
     AuthModule,
     ServiceModule,
+    AccountModule,
+    AccountTypeModule,
+    BankModule,
+    BankCategoryModule,
+    TypeOfBusinessModule,
   ],
   providers: [
     {

@@ -28,8 +28,8 @@ async function bootstrap() {
 
   // Swagger configuration
   const config = new DocumentBuilder()
-    .setTitle('WMS API')
-    .setDescription('Warehouse Management System API documentation')
+    .setTitle('Cust MP API')
+    .setDescription('Customer DB MP System API documentation')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
