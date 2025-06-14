@@ -14,8 +14,8 @@ export class AuthService implements IAuthService {
     private readonly userRepository: IUserRepository,
   ) {}
 
-  async validateUser(email: string, password: string): Promise<User | null> {
-    const user = await this.userRepository.findByEmail(email);
+  async validateUser(username: string, password: string): Promise<User | null> {
+    const user = await this.userRepository.findByUsername(username);
     if (user && await bcrypt.compare(password, user.password)) {
       return user;
     }
@@ -23,8 +23,8 @@ export class AuthService implements IAuthService {
   }
 
   async generateToken(user: User): Promise<string> {
-    const payload = { sub: user.id, email: user.email };
-    return this.jwtService.sign(payload);
+    const payload = { sub: user.id, username: user.username };
+    return this.jwtService.sign(payload, { secret: process.env.JWT_SECRET });
   }
 
   async verifyToken(token: string): Promise<any> {

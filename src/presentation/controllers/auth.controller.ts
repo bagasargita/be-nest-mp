@@ -22,7 +22,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() loginDto: LoginDto) {
-    const user = await this.authService.validateUser(loginDto.email, loginDto.password);
+    const user = await this.authService.validateUser(loginDto.username, loginDto.password);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -34,11 +34,11 @@ export class AuthController {
   @Post('register')
   @ApiOperation({ summary: 'User registration' })
   @ApiResponse({ status: 201, description: 'User registered successfully' })
-  @ApiResponse({ status: 401, description: 'Email already exists' })
+  @ApiResponse({ status: 401, description: 'Username already exists' })
   async register(@Body() registerDto: RegisterDto) {
-    const existingUser = await this.userRepository.findByEmail(registerDto.email);
+    const existingUser = await this.userRepository.findByUsername(registerDto.username);
     if (existingUser) {
-      throw new UnauthorizedException('Email already exists');
+      throw new UnauthorizedException('Username already exists');
     }
 
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
