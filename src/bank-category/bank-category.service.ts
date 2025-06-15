@@ -12,35 +12,48 @@ export class BankCategoryService {
     private readonly repo: Repository<BankCategory>,
   ) {}
 
-  findAll(): Promise<BankCategory[]> {
-    return this.repo.find();
+  async findAll(): Promise<BankCategory[]> {
+    try {
+      return this.repo.find();
+    } catch (error) {
+      throw new Error('Failed to fetch bank categories: ' + error.message);
+    }
   }
 
-  findOne(id: string): Promise<BankCategory | null> {
-    return this.repo.findOne({ where: { id } });
+  async findOne(id: string): Promise<BankCategory | null> {
+    const bankCategory = await this.repo.findOne({ where: { id } });
+    if (!bankCategory) {
+      throw new Error(`BankCategory with id ${id} not found`);
+    }
+    return bankCategory
   }
 
-  create(dto: CreateBankCategoryDto): Promise<BankCategory> {
+  async create(dto: CreateBankCategoryDto, username: string): Promise<BankCategory> {
     const entity = this.repo.create({
       ...dto,
+      created_by: username,
       created_at: new Date(),
     });
     return this.repo.save(entity);
   }
 
-  async update(id: string, dto: UpdateBankCategoryDto): Promise<BankCategory> {
-    await this.repo.update(id, {
+  async update(id: string, dto: UpdateBankCategoryDto, username: string): Promise<BankCategory> {
+    const bankCategory = await this.repo.preload({
+      id: id,
       ...dto,
+      updated_by: username,
       updated_at: new Date(),
     });
-    const updated = await this.findOne(id);
-    if (!updated) {
+    if (!bankCategory) {
       throw new Error(`BankCategory with id ${id} not found`);
     }
-    return updated;
+    return this.repo.save(bankCategory);
   }
 
   async remove(id: string): Promise<void> {
-    await this.repo.delete(id);
+    const result = await this.repo.delete({ id });
+    if (result.affected === 0) {
+      throw new Error(`BankCategory with id ${id} not found`);
+    }
   }
 }

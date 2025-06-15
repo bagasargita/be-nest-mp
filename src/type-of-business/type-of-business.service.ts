@@ -12,35 +12,48 @@ export class TypeOfBusinessService {
     private readonly repo: Repository<TypeOfBusiness>,
   ) {}
 
-  findAll(): Promise<TypeOfBusiness[]> {
-    return this.repo.find();
+  async findAll(): Promise<TypeOfBusiness[]> {
+    try {
+      return this.repo.find();
+    } catch (error) {
+      throw new Error('Failed to fetch types of business: ' + error.message);
+    }
   }
 
-  findOne(id: string): Promise<TypeOfBusiness | null> {
-    return this.repo.findOne({ where: { id } });
+  async findOne(id: string): Promise<TypeOfBusiness | null> {
+    const typeOfBusiness = await this.repo.findOne({ where: { id } });
+    if (!typeOfBusiness) {
+      throw new Error(`TypeOfBusiness with id ${id} not found`);
+    }
+    return typeOfBusiness;
   }
 
-  create(dto: CreateTypeOfBusinessDto): Promise<TypeOfBusiness> {
+  async create(dto: CreateTypeOfBusinessDto, username: string): Promise<TypeOfBusiness> {
     const entity = this.repo.create({
       ...dto,
+      created_by: username,
       created_at: new Date(),
     });
     return this.repo.save(entity);
   }
 
-  async update(id: string, dto: UpdateTypeOfBusinessDto): Promise<TypeOfBusiness> {
-    await this.repo.update(id, {
+  async update(id: string, dto: UpdateTypeOfBusinessDto, username: string): Promise<TypeOfBusiness> {
+    const typeOfBusiness = await this.repo.preload({
+      id: id,
       ...dto,
+      updated_by: username,
       updated_at: new Date(),
     });
-    const updated = await this.findOne(id);
-    if (!updated) {
+    if (!typeOfBusiness) {
       throw new Error(`TypeOfBusiness with id ${id} not found`);
     }
-    return updated;
+    return this.repo.save(typeOfBusiness);
   }
 
   async remove(id: string): Promise<void> {
-    await this.repo.delete(id);
+    const result = await this.repo.delete({ id });
+    if (result.affected === 0) {
+      throw new Error(`TypeOfBusiness with id ${id} not found`);
+    }
   }
 }

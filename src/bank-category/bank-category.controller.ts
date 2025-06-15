@@ -1,8 +1,21 @@
-import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseUUIDPipe,
+  UseGuards,
+  Req, // Untuk mengakses object request
+} from '@nestjs/common';
 import { BankCategoryService } from './bank-category.service';
 import { CreateBankCategoryDto } from './dto/create-bank-category.dto';
 import { UpdateBankCategoryDto } from './dto/update-bank-category.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @Controller('bank-category')
 export class BankCategoryController {
   constructor(private readonly service: BankCategoryService) {}
@@ -13,22 +26,28 @@ export class BankCategoryController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.findOne(id);
   }
 
   @Post()
-  create(@Body() dto: CreateBankCategoryDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateBankCategoryDto, @Req() request: any) {
+    const username = request.user.username || 'system'; // Ambil username dari request, default ke 'system'
+    return this.service.create(dto, username);
   }
 
-  @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateBankCategoryDto) {
-    return this.service.update(id, dto);
+  @Patch(':id')
+  update(
+    @Param('id', ParseUUIDPipe) id: string, 
+    @Body() dto: UpdateBankCategoryDto,
+    @Req() request: any,
+  ) {
+    const username = request.user.username || 'system'; // Ambil username dari request, default ke 'system'
+    return this.service.update(id, dto, username);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.remove(id);
   }
 }

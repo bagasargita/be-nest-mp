@@ -12,35 +12,48 @@ export class BankService {
     private readonly repo: Repository<Bank>,
   ) {}
 
-  findAll(): Promise<Bank[]> {
-    return this.repo.find();
+  async findAll(): Promise<Bank[]> {
+    try {
+      return this.repo.find();
+    } catch (error) {
+      throw new Error('Failed to fetch banks: ' + error.message);
+    }
   }
 
-  findOne(id: string): Promise<Bank | null> {
-    return this.repo.findOne({ where: { id } });
+  async findOne(id: string): Promise<Bank | null> {
+    const bank = await this.repo.findOne({ where: { id } });
+    if (!bank) {  
+      throw new Error(`Bank with id ${id} not found`);
+    }
+    return bank;
   }
 
-  create(dto: CreateBankDto): Promise<Bank> {
+  async create(dto: CreateBankDto, username: string): Promise<Bank> {
     const entity = this.repo.create({
       ...dto,
+      created_by: username,
       created_at: new Date(),
     });
     return this.repo.save(entity);
   }
 
-  async update(id: string, dto: UpdateBankDto): Promise<Bank> {
-    await this.repo.update(id, {
+  async update(id: string, dto: UpdateBankDto, username: string): Promise<Bank> {
+    const bank = await this.repo.preload({
+      id: id,
       ...dto,
+      updated_by: username,
       updated_at: new Date(),
     });
-    const updated = await this.findOne(id);
-    if (!updated) {
+    if (!bank) {
       throw new Error(`Bank with id ${id} not found`);
     }
-    return updated;
+    return this.repo.save(bank);
   }
 
   async remove(id: string): Promise<void> {
-    await this.repo.delete(id);
+    const result = await this.repo.delete(id);
+    if (result.affected === 0) {
+      throw new Error(`Bank with id ${id} not found`);
+    }
   }
 }

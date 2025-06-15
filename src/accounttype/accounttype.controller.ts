@@ -1,33 +1,53 @@
-import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseUUIDPipe,
+  UseGuards,
+  Req, // Untuk mengakses object request
+} from '@nestjs/common';
 import { AccountTypeService } from './accounttype.service';
-import { AccountType } from './entities/accounttype.entity';
 import { CreateAccountTypeDto } from './dto/create-accounttype.dto';
 import { UpdateAccountTypeDto } from './dto/update-accounttype.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @Controller('account-type')
 export class AccountTypeController {
   constructor(private readonly service: AccountTypeService) {}
 
   @Get()
-  findAll(): Promise<AccountType[]> {
+  findAll(){
     return this.service.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<AccountType | null> {
+  findOne(@Param('id', ParseUUIDPipe) id: string){
     return this.service.findOne(id);
   }
+
   @Post()
-  create(@Body() data: CreateAccountTypeDto): Promise<AccountType> {
-    return this.service.create(data);
+  create(@Body() data: CreateAccountTypeDto, @Req() request: any){
+    const username = request.user.username || 'system'; // Ambil username dari request, default ke 'system'
+    return this.service.create(data, username);
   }
-  @Put(':id')
-  update(@Param('id') id: string, @Body() data: UpdateAccountTypeDto): Promise<AccountType> {
-    return this.service.update(id, data);
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseUUIDPipe) id: string, 
+    @Body() data: UpdateAccountTypeDto,
+    @Req() request: any,
+  ){
+    const username = request.user.username || 'system'; // Ambil username dari request, default ke 'system'
+    return this.service.update(id, data, username);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string): Promise<void> {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.remove(id);
   }
 }

@@ -12,35 +12,48 @@ export class AccountTypeService {
     private readonly repo: Repository<AccountType>,
   ) {}
   
-  findAll(): Promise<AccountType[]> {
-    return this.repo.find();
+  async findAll(): Promise<AccountType[]> {
+    try {
+      return this.repo.find();
+    } catch (error) {
+      throw new Error('Failed to fetch account types: ' + error.message);
+    }
   }
 
-  findOne(id: string): Promise<AccountType | null> {
-    return this.repo.findOne({ where: { id } });
+  async findOne(id: string): Promise<AccountType | null> {
+    const accountType = await this.repo.findOne({ where: { id } });
+    if (!accountType) {
+      throw new Error(`AccountType with id ${id} not found`);
+    }
+    return accountType;
   }
 
-  create(dto: CreateAccountTypeDto): Promise<AccountType> {
+  async create(dto: CreateAccountTypeDto, username: string): Promise<AccountType> {
     const entity = this.repo.create({
       ...dto,
+      created_by: username,
       created_at: new Date(),
     });
     return this.repo.save(entity);
   }
 
-    async update(id: string, dto: UpdateAccountTypeDto): Promise<AccountType> {
-      await this.repo.update(id, {
-        ...dto,
-        updated_at: new Date(),
-      });
-      const updated = await this.findOne(id);
-      if (!updated) {
-        throw new Error('AccountType not found');
-      }
-      return updated;
+  async update(id: string, dto: UpdateAccountTypeDto, username: string): Promise<AccountType> {
+    const accountType = await this.repo.preload({
+      id: id,
+      ...dto,
+      updated_by: username,
+      updated_at: new Date(),
+    });
+    if (!accountType) {
+      throw new Error(`AccountType with id ${id} not found`);
     }
-  
-    async remove(id: string): Promise<void> {
-      await this.repo.delete(id);
+    return this.repo.save(accountType);
+  }
+
+  async remove(id: string): Promise<void> {
+    const result = await this.repo.delete({ id });
+    if (result.affected === 0) {
+      throw new Error(`Account Type with id ${id} not found`);
     }
   }
+}

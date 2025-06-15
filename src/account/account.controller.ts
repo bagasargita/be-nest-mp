@@ -1,34 +1,51 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Patch, Delete, ParseUUIDPipe, Req } from '@nestjs/common';
+// import { JwtAuthGuard } from 'src/infrastructure/guards/auth.guard';
 import { AccountService } from './account.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiBody  } from '@nestjs/swagger';
 
+// @UseGuards(JwtAuthGuard)
+@ApiTags('Account')
+@ApiBearerAuth()
 @Controller('account')
 export class AccountController {
-  constructor(private readonly accountService: AccountService) {}
-
-  @Post()
-  create(@Body() createAccountDto: CreateAccountDto) {
-    return this.accountService.create(createAccountDto);
-  }
+  constructor(private readonly service: AccountService) {}
 
   @Get()
   findAll() {
-    return this.accountService.findAll();
+    return this.service.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.accountService.findOne(+id);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.findOne(id);
+  }
+
+  @Post()
+  create(@Body() dto: CreateAccountDto, @Req() req: any) {
+    const username = req.user.username || 'system'; // Menggunakan ID user dari token JWT atau default ke 'system'
+    return this.service.create(dto, username);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAccountDto: UpdateAccountDto) {
-    return this.accountService.update(+id, updateAccountDto);
+  update(
+    @Param('id', ParseUUIDPipe) id: string, 
+    @Body() dto: UpdateAccountDto, 
+    @Req() req: any,
+  ) {
+    const username = req.user.username || 'system'; // Menggunakan ID user dari token JWT atau default ke 'system'
+    return this.service.update(id, dto, username);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.accountService.remove(+id);
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.remove(id);
+  }
+
+  // Endpoint untuk ambil seluruh subtree dari sebuah account
+  @Get(':id/tree')
+  findDescendants(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.findDescendants(id);
   }
 }

@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Patch, ParseUUIDPipe, Req } from '@nestjs/common';
 import { TypeOfBusinessService } from './type-of-business.service';
 import { CreateTypeOfBusinessDto } from './dto/create-type-of-business.dto';
 import { UpdateTypeOfBusinessDto } from './dto/update-type-of-business.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @Controller('type-of-business')
 export class TypeOfBusinessController {
   constructor(private readonly service: TypeOfBusinessService) {}
@@ -13,22 +15,28 @@ export class TypeOfBusinessController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.findOne(id);
   }
 
   @Post()
-  create(@Body() dto: CreateTypeOfBusinessDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateTypeOfBusinessDto, @Req() request: any) {
+    const username = request.user.username || 'system'; // Ambil username dari request, default ke 'system'
+    return this.service.create(dto, username);
   }
 
-  @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateTypeOfBusinessDto) {
-    return this.service.update(id, dto);
+  @Patch(':id')
+  update(
+    @Param('id', ParseUUIDPipe) id: string, 
+    @Body() dto: UpdateTypeOfBusinessDto,
+    @Req() request: any,
+  ) {
+    const username = request.user.username || 'system'; // Ambil username dari request, default ke 'system'
+    return this.service.update(id, dto, username);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.remove(id);
   }
 }
