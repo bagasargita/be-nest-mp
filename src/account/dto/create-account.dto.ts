@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateAccountDto {
   @ApiProperty({
@@ -48,7 +48,8 @@ export class CreateAccountDto {
   @ApiProperty({
     description: 'Account type ID associated with the account', 
     example: 'type_1234567890',
-    required: false,})
+    required: false,
+  })
   @IsOptional()
   @IsString()
   account_type_id?: string;

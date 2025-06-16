@@ -24,8 +24,7 @@ export class AccountService {
         'industry',
         'type_of_business',
         'account_type',
-        'account_category',
-        'parent', // Jika ingin mengambil parent account
+        'account_category'
       ]
     });
 
@@ -118,10 +117,10 @@ export class AccountService {
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.repo.delete({ id });
-    if (result.affected === 0) {
+    const account = await this.repo.delete({ id });
+    if (!account) {
       throw new Error(`Account with id ${id} not found`);
-    }
+    };
   }
 
   // Contoh: ambil seluruh subtree (descendants) dari sebuah account
