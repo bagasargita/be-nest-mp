@@ -12,6 +12,7 @@ import { AccountTypeModule } from './accounttype/accounttype.module';
 import { BankModule } from './bank/bank.module';
 import { BankCategoryModule } from './bank-category/bank-category.module';
 import { TypeOfBusinessModule } from './type-of-business/type-of-business.module';
+import { SettlementMethodModule } from './settlement-method/settlement-method.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { TypeOfBusinessModule } from './type-of-business/type-of-business.module
     BankModule,
     BankCategoryModule,
     TypeOfBusinessModule,
+    SettlementMethodModule,
   ],
   providers: [
     {
