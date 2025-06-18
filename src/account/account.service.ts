@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { TreeRepository, In } from 'typeorm';
+import { TreeRepository } from 'typeorm';
 import { Account } from './entities/account.entity';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
@@ -13,9 +13,9 @@ export class AccountService {
   constructor(
     @InjectRepository(Account)
     private readonly repo: TreeRepository<Account>,
-    private readonly accountAddressService: AccountAddressService, // Assuming you have an AccountAddressService for address management
-    private readonly accountPICService: AccountPICService, // Assuming you have an AccountPICService for PIC management
-    private readonly accountBankService: AccountBankService, // Assuming you have an AccountBankService for bank management
+    private readonly accountAddressService: AccountAddressService,
+    private readonly accountPICService: AccountPICService,
+    private readonly accountBankService: AccountBankService,
   ) {}
 
   async findAll(): Promise<Account[]> {
@@ -33,10 +33,9 @@ export class AccountService {
       accounts.map(async (account) => {
         const [addresses, pics, banks] = await Promise.all([
           this.accountAddressService.findByAccountId(account.id),
-          this.accountPICService.findByAccountId(account.id),
-          this.accountBankService.findByAccountId(account.id)
+          this.accountPICService.findByAccountIdWithRelations(account.id), // gunakan relasi position
+          this.accountBankService.findByAccountIdWithRelations(account.id) // gunakan relasi bank & bank_category
         ]);
-        
         return {
           ...account,
           account_address: addresses || [],
@@ -49,28 +48,28 @@ export class AccountService {
   }
 
   async findOne(id: string): Promise<any> {
-    const account = await this.repo.findOne({ 
+    const account = await this.repo.findOne({
       where: { id },
       relations: [
         'industry',
         'type_of_business',
         'account_type',
         'account_category',
-        'parent' // Jika ingin mengambil parent account
-      ] 
+        'parent'
+      ]
     });
-    
+
     if (!account) {
       throw new NotFoundException(`Account with ID ${id} not found`);
     }
 
-    // Ambil data terkait
+    // Ambil data terkait dengan relasi lengkap
     const [addresses, pics, banks] = await Promise.all([
       this.accountAddressService.findByAccountId(id),
-      this.accountPICService.findByAccountId(id),
-      this.accountBankService.findByAccountId(id)
+      this.accountPICService.findByAccountIdWithRelations(id), // relasi position
+      this.accountBankService.findByAccountIdWithRelations(id) // relasi bank & bank_category
     ]);
-    
+
     return {
       ...account,
       account_address: addresses || [],
@@ -109,7 +108,6 @@ export class AccountService {
       id: id,
       ...updateData,
     });
-    // const updated = await this.findOne(id);
     if (!account) {
       throw new Error(`Account with id ${id} not found`);
     }
@@ -120,10 +118,9 @@ export class AccountService {
     const account = await this.repo.delete({ id });
     if (!account) {
       throw new Error(`Account with id ${id} not found`);
-    };
+    }
   }
 
-  // Contoh: ambil seluruh subtree (descendants) dari sebuah account
   async findDescendants(id: string) {
     return this.repo.findDescendantsTree({ id } as Account);
   }

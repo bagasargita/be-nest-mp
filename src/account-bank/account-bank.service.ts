@@ -26,6 +26,13 @@ export class AccountBankService {
     return this.repo.findOne({ where: { id }, relations: ['account', 'bank', 'bank_category'] });
   }
 
+  async findByAccountIdWithRelations(accountId: string) {
+    return this.repo.find({
+      where: { account: { id: accountId } },
+      relations: ['bank', 'bank_category']
+    });
+  }
+
   async create(dto: CreateAccountBankDto, username: string): Promise<AccountBank> {
     const entity = this.repo.create({
       ...dto,

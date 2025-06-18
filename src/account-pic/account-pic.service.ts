@@ -34,6 +34,13 @@ export class AccountPICService {
     return accountPIC;
   }
 
+  async findByAccountIdWithRelations(accountId: string) {
+    return this.repo.find({
+      where: { account: { id: accountId } },
+      relations: ['position']
+    });
+  }
+
   async create(dto: CreateAccountPICDto, username: string): Promise<AccountPIC> {
     const entity = this.repo.create({
       ...dto,
