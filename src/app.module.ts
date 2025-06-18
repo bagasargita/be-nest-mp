@@ -19,6 +19,7 @@ import { IndustryModule } from './industry/industry.module';
 import { AccountAddressModule } from './account-address/account-address.module';
 import { AccountBankModule } from './account-bank/account-bank.module';
 import { AccountPICModule } from './account-pic/account-pic.module';
+import { SettlementMethodModule } from './settlement-method/settlement-method.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { AccountPICModule } from './account-pic/account-pic.module';
     AccountAddressModule,
     AccountBankModule,
     AccountPICModule,
+    SettlementMethodModule,
   ],
   providers: [
     {
