@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Patch, Delete, ParseUUIDPipe, Req } from '@nestjs/common';
+import { Query, Controller, Get, Post, Body, Param, Put, Patch, Delete, ParseUUIDPipe, Req } from '@nestjs/common';
 // import { JwtAuthGuard } from 'src/infrastructure/guards/auth.guard';
 import { AccountService } from './account.service';
 import { CreateAccountDto } from './dto/create-account.dto';
@@ -15,6 +15,19 @@ export class AccountController {
   @Get()
   findAll() {
     return this.service.findAll();
+  }
+
+  @Get('generate-account-no')
+  async generateAccountNo(
+    @Query('account_type_name') accountTypeName: string,
+    @Query('parent_id') parentId?: string,
+  ) {
+    return this.service.generateAccountNo(accountTypeName, parentId);
+  }
+
+  @Get('parent-tree')
+  async getParentAccountTree() {
+    return this.service.getParentAccountTree();
   }
 
   @Get(':id')

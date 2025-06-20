@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TreeRepository } from 'typeorm';
 import { Account } from './entities/account.entity';
@@ -45,6 +45,42 @@ export class AccountService {
       }),
     );
     return accountsWithRelations;
+  }
+
+  async generateAccountNo(accountTypeName: string, parentId?: string): Promise<{ account_no: string }> {
+    const padSeq = (seq: number, len = 3) => String(seq).padStart(len, '0');
+    const padSeq4 = (seq: number) => String(seq).padStart(4, '0');
+    const today = new Date();
+    const YY = String(today.getFullYear()).slice(-2);
+    const MM = String(today.getMonth() + 1).padStart(2, '0');
+    const DD = String(today.getDate()).padStart(2, '0');
+
+    let accountNo = '';
+    let sequence = 1;
+
+    if (accountTypeName === 'parent') {
+      // Format: YYMMDD-0001
+      const prefix = `${YY}${MM}${DD}`;
+      const count = await this.repo.createQueryBuilder("account")
+        .where("account.account_no LIKE :prefix", { prefix: `${prefix}-%` })
+        .andWhere("account.parentId IS NULL")
+        .getCount();
+      sequence = count + 1;
+      accountNo = `${prefix}-${padSeq4(sequence)}`;
+    } else if (['child', 'branch', 'sub-branch'].includes(accountTypeName)) {
+      if (!parentId) throw new BadRequestException('parent_id is required');
+      // Cari parent
+      const parent = await this.repo.findOne({ where: { id: parentId } });
+      if (!parent) throw new BadRequestException('Parent not found');
+      // Hitung jumlah anak langsung parent ini
+      const count = await this.repo.count({ where: { parent: { id: parentId } } });
+      sequence = count + 1;
+      accountNo = `${parent.account_no}-${padSeq(sequence)}`;
+    } else {
+      throw new BadRequestException('Invalid account_type_name');
+    }
+
+    return { account_no: accountNo };
   }
 
   async findOne(id: string): Promise<any> {
@@ -123,5 +159,9 @@ export class AccountService {
 
   async findDescendants(id: string) {
     return this.repo.findDescendantsTree({ id } as Account);
+  }
+
+  async getParentAccountTree(): Promise<Account[]> {
+    return this.repo.findTrees();
   }
 }
