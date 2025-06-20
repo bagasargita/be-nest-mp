@@ -3,7 +3,6 @@ import { AccountBankService } from './account-bank.service';
 import { CreateAccountBankDto } from './dto/create-account-bank.dto';
 import { UpdateAccountBankDto } from './dto/update-account-bank.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { use } from 'passport';
 
 @ApiBearerAuth()
 @Controller('account-bank')

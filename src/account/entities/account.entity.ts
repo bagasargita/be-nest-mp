@@ -1,5 +1,5 @@
 import {
-  Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Tree, TreeParent, TreeChildren
+  Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Tree, TreeParent, TreeChildren, JoinTable, ManyToMany
 } from 'typeorm';
 import { Industry } from '../../industry/entities/industry.entity';
 import { TypeOfBusiness } from '../../type-of-business/entities/type-of-business.entity';
@@ -33,9 +33,13 @@ export class Account {
   @JoinColumn({ name: 'account_type_id' })
   account_type: AccountType;
 
-  @ManyToOne(() => AccountCategory, { nullable: true })
-  @JoinColumn({ name: 'account_category_id' })
-  account_category: AccountCategory;
+  @ManyToMany(() => AccountCategory, { nullable: true })
+  @JoinTable({ 
+    name: 'account_account_category',
+    joinColumn: { name: 'account_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'account_category_id', referencedColumnName: 'id' }
+  })
+  account_categories: AccountCategory[];
 
   @TreeParent()
   parent: Account | null;

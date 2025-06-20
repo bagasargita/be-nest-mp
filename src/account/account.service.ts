@@ -24,7 +24,7 @@ export class AccountService {
         'industry',
         'type_of_business',
         'account_type',
-        'account_category'
+        'account_categories',
       ]
     });
 
@@ -90,7 +90,7 @@ export class AccountService {
         'industry',
         'type_of_business',
         'account_type',
-        'account_category',
+        'account_categories',
         'parent'
       ]
     });
@@ -120,7 +120,7 @@ export class AccountService {
       industry: dto.industry_id ? { id: dto.industry_id } : undefined,
       type_of_business: dto.type_of_business_id ? { id: dto.type_of_business_id } : undefined,
       account_type: dto.account_type_id ? { id: dto.account_type_id } : undefined,
-      account_category: dto.account_category_id ? { id: dto.account_category_id } : undefined,
+      account_categories: dto.account_category_ids?.map(id => ({ id })) || [],
       parent: dto.parent_id ? { id: dto.parent_id } as any : null,
       created_by: username,
       created_at: new Date(),
@@ -137,7 +137,7 @@ export class AccountService {
     if (dto.industry_id) updateData.industry = { id: dto.industry_id };
     if (dto.type_of_business_id) updateData.type_of_business = { id: dto.type_of_business_id };
     if (dto.account_type_id) updateData.account_type = { id: dto.account_type_id };
-    if (dto.account_category_id) updateData.account_category = { id: dto.account_category_id };
+    if (dto.account_category_ids) updateData.account_categories = dto.account_category_ids.map(id => ({ id }));
     if (dto.parent_id) updateData.parent = { id: dto.parent_id } as any;
 
     const account = await this.repo.preload({

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray, IsUUID } from 'class-validator';
 
 export class CreateAccountDto {
   @ApiProperty({
@@ -55,13 +55,15 @@ export class CreateAccountDto {
   account_type_id?: string;
 
   @ApiProperty({
-    description: 'Account category ID associated with the account',
-    example: 'cat_1234567890',
+    description: 'Account category IDs associated with the account',
+    example: ['cat_1234567890', 'cat_9876543210'],
     required: false,
+    type: [String],
   })
   @IsOptional()
-  @IsString()
-  account_category_id?: string;
+  @IsArray()
+  @IsUUID('all', { each: true })
+  account_category_ids?: string[];
 
   @ApiProperty({
     description: 'Parent account ID if this account is a sub-account',

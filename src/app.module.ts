@@ -20,6 +20,7 @@ import { AccountAddressModule } from './account-address/account-address.module';
 import { AccountBankModule } from './account-bank/account-bank.module';
 import { AccountPICModule } from './account-pic/account-pic.module';
 import { SettlementMethodModule } from './settlement-method/settlement-method.module';
+import { AccountServiceModule } from './account-service/account-service.module';
 
 @Module({
   imports: [
@@ -38,7 +39,8 @@ import { SettlementMethodModule } from './settlement-method/settlement-method.mo
         // entities: [User, Service],
         entities: [],
         autoLoadEntities: true,
-        synchronize: configService.get('NODE_ENV', 'development') === 'development',
+        // synchronize: configService.get('NODE_ENV', 'development') === 'development',
+        synchronize: false,
       }),
       inject: [ConfigService],
     }),
@@ -56,6 +58,7 @@ import { SettlementMethodModule } from './settlement-method/settlement-method.mo
     AccountBankModule,
     AccountPICModule,
     SettlementMethodModule,
+    AccountServiceModule,
   ],
   providers: [
     {

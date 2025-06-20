@@ -1,6 +1,4 @@
-// create-account-category.dto.ts
-
-import { IsString, IsOptional, IsBoolean, IsNotEmpty } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsNotEmpty, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateAccountCategoryDto {
@@ -20,8 +18,11 @@ export class CreateAccountCategoryDto {
   @IsBoolean()
   is_active?: boolean;
 
-  // HAPUS Properti `created_by` dari DTO.
-  // @IsOptional()
-  // @IsString()
-  // created_by: string;
+  @ApiPropertyOptional({
+    description: 'Parent account category ID (for tree structure)',
+    example: 'b1e7e8c2-1234-4cde-9e1a-123456789abc',
+  })
+  @IsOptional()
+  @IsUUID()
+  parentId?: string;
 }

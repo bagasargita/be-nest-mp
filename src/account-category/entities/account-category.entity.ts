@@ -1,12 +1,19 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, Tree, TreeChildren, TreeParent } from 'typeorm';
 
 @Entity('m_account_category')
+@Tree('closure-table')
 export class AccountCategory {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ length: 100 })
   name: string;
+
+  @TreeParent()
+  parent: AccountCategory | null;
+
+  @TreeChildren()
+  children: AccountCategory[];
 
   @Column({ default: true })
   is_active: boolean;
@@ -23,3 +30,6 @@ export class AccountCategory {
   @Column({ type: 'timestamp', nullable: true })
   updated_at: Date;
 }
+
+// @ManyToOne(() => AccountCategory, (category) => category.children, { nullable: true })
+//   parent: AccountCategory | null;
