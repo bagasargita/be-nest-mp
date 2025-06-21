@@ -20,6 +20,7 @@ import { AccountAddressModule } from './account-address/account-address.module';
 import { AccountBankModule } from './account-bank/account-bank.module';
 import { AccountPICModule } from './account-pic/account-pic.module';
 import { SettlementMethodModule } from './settlement-method/settlement-method.module';
+import { RevenueRuleModule } from './revenue-rules/revenue-rules.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { SettlementMethodModule } from './settlement-method/settlement-method.mo
     AccountBankModule,
     AccountPICModule,
     SettlementMethodModule,
+    RevenueRuleModule,
   ],
   providers: [
     {
