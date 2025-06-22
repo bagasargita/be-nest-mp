@@ -23,6 +23,7 @@ import { SettlementMethodModule } from './settlement-method/settlement-method.mo
 import { AccountServiceModule } from './account-service/account-service.module';
 import { AccountDocumentModule } from './account-document/account-document.module';
 import { DocumentTypeModule } from './document-type/document-type.module';
+import { RevenueRuleModule } from './revenue-rules/revenue-rules.module';
 
 @Module({
   imports: [
@@ -60,9 +61,13 @@ import { DocumentTypeModule } from './document-type/document-type.module';
     AccountBankModule,
     AccountPICModule,
     SettlementMethodModule,
+<<<<<<< HEAD
     AccountServiceModule,
     AccountDocumentModule,
     DocumentTypeModule,
+=======
+    RevenueRuleModule,
+>>>>>>> origin/revenue-rule
   ],
   providers: [
     {
