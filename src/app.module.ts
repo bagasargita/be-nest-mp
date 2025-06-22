@@ -21,6 +21,8 @@ import { AccountBankModule } from './account-bank/account-bank.module';
 import { AccountPICModule } from './account-pic/account-pic.module';
 import { SettlementMethodModule } from './settlement-method/settlement-method.module';
 import { AccountServiceModule } from './account-service/account-service.module';
+import { AccountDocumentModule } from './account-document/account-document.module';
+import { DocumentTypeModule } from './document-type/document-type.module';
 
 @Module({
   imports: [
@@ -59,6 +61,8 @@ import { AccountServiceModule } from './account-service/account-service.module';
     AccountPICModule,
     SettlementMethodModule,
     AccountServiceModule,
+    AccountDocumentModule,
+    DocumentTypeModule,
   ],
   providers: [
     {
