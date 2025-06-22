@@ -61,13 +61,10 @@ import { RevenueRuleModule } from './revenue-rules/revenue-rules.module';
     AccountBankModule,
     AccountPICModule,
     SettlementMethodModule,
-<<<<<<< HEAD
     AccountServiceModule,
     AccountDocumentModule,
     DocumentTypeModule,
-=======
     RevenueRuleModule,
->>>>>>> origin/revenue-rule
   ],
   providers: [
     {
