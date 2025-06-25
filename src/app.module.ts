@@ -24,6 +24,7 @@ import { AccountServiceModule } from './account-service/account-service.module';
 import { AccountDocumentModule } from './account-document/account-document.module';
 import { DocumentTypeModule } from './document-type/document-type.module';
 import { RevenueRuleModule } from './revenue-rules/revenue-rules.module';
+import { AccountRevenueRulesModule } from './account-revenue-rules/account-revenue-rules.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { RevenueRuleModule } from './revenue-rules/revenue-rules.module';
     AccountDocumentModule,
     DocumentTypeModule,
     RevenueRuleModule,
+    AccountRevenueRulesModule,
   ],
   providers: [
     {
