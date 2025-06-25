@@ -5,11 +5,12 @@ import { AccountRevenueRuleService } from './account-revenue-rules.service';
 import { AccountRevenueRuleController } from './account-revenue-rules.controller';
 import { AccountModule } from 'src/account/account.module';
 import { AccountServiceModule } from 'src/account-service/account-service.module';
+import { AccountRevenueRuleTree } from './entities/account-revenue-rule-tree.entity';
 // import { AccountService } from 'src/account/account.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AccountRevenueRule]),
+    TypeOrmModule.forFeature([AccountRevenueRule, AccountRevenueRuleTree]),
     AccountModule,
     AccountServiceModule,
   ],
