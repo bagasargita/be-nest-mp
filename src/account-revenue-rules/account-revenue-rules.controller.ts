@@ -60,19 +60,6 @@ export class AccountRevenueRuleController {
     };
   }
 
-  @Patch('tree/:id')
-  @ApiOperation({ summary: 'Update a tree revenue rule' })
-  @ApiParam({ name: 'id', description: 'Tree Revenue Rule ID' })
-  @ApiResponse({ status: 200, description: 'Tree rule updated successfully' })
-  updateTree(
-    @Param('id') id: string, 
-    @Body() updateTreeDto: CreateAccountRevenueRuleTreeDto,
-    @Request() req
-  ) {
-    const username = req.user?.username || 'system';
-    return this.accountRevenueRuleService.updateTree(id, updateTreeDto, username);
-  }
-
   @Delete('tree/:id')
   @ApiOperation({ summary: 'Delete a tree revenue rule' })
   @ApiParam({ name: 'id', description: 'Tree Revenue Rule ID' })

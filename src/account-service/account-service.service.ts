@@ -14,12 +14,20 @@ export class AccountServiceService {
 
   async findByAccountId(accountId: string): Promise<AccountService[]> {
     return this.repo.find({
-      where: { account: { id: accountId } }
+      where: { account: { id: accountId } },
+      relations: ['account', 'service'],
     });
   }
 
   async findAll(): Promise<AccountService[]> {
     return this.repo.find({
+      relations: ['account', 'service'],
+    });
+  }
+
+  async findByServiceIdAndAccountId(serviceId: string, accountId: string): Promise<AccountService[]> {
+    return this.repo.find({
+      where: { account: { id: accountId }, service: { id: serviceId } },
       relations: ['account', 'service'],
     });
   }
@@ -46,9 +54,9 @@ export class AccountServiceService {
 
   async create(createAccountServiceDto: CreateAccountServiceDto, username: string): Promise<AccountService> { 
     const entity = this.repo.create({
-      ...createAccountServiceDto,
-      account: { id: createAccountServiceDto.account_id } as any,
-      service: { id: createAccountServiceDto.service_id } as any,
+      account: { id: createAccountServiceDto.account_id },
+      service: { id: createAccountServiceDto.service_id },
+      is_active: createAccountServiceDto.is_active ?? true,
       created_by: username,
       created_at: new Date(),
     });
@@ -57,12 +65,12 @@ export class AccountServiceService {
 
   async update(id: string, updateAccountServiceDto: UpdateAccountServiceDto, username: string): Promise<AccountService> {
     const updateData: any = {
-      ...updateAccountServiceDto,
       updated_by: username,
       updated_at: new Date(),
     };
     if (updateAccountServiceDto.account_id) updateData.account = { id: updateAccountServiceDto.account_id };
     if (updateAccountServiceDto.service_id) updateData.service = { id: updateAccountServiceDto.service_id };
+    if (updateAccountServiceDto.is_active !== undefined) updateData.is_active = updateAccountServiceDto.is_active;
 
     const accountService = await this.repo.preload({
       id: id,
@@ -79,5 +87,12 @@ export class AccountServiceService {
     if (result.affected === 0) {
       throw new Error(`AccountService with ID ${id} not found`);
     }
+  }
+
+  async findByAccountServiceId(accountServiceId: string): Promise<AccountService | null> {
+    return this.repo.findOne({
+      where: { id: accountServiceId },
+      relations: ['account', 'service'],
+    });
   }
 }

@@ -7,6 +7,7 @@ import { CreateAccountRevenueRuleDto, AccountRuleDto, CreateAccountRevenueRuleTr
 import { UpdateAccountRevenueRuleDto } from './dto/update-account-revenue-rule.dto';
 import { FindAccountRevenueRuleDto } from './dto/find-account-revenue-rule.dto';
 import { AccountServiceService } from '../account-service/account-service.service';
+import { AccountService } from 'src/account-service/entities/account-service.entity';
 
 @Injectable()
 export class AccountRevenueRuleService {
@@ -23,13 +24,20 @@ export class AccountRevenueRuleService {
     const { account_id, account_service_id, charging_metric, billing_rules } = createDto;
 
     // Check if account_service_id is provided
-    let finalAccountServiceId = account_service_id;
+    let accountServiceId = account_service_id;
     
-    // If account_service_id is actually a service_id (newly selected service), create the account service relationship first
-    if (finalAccountServiceId) {
+    // First, try to find if account_service_id is actually an account service ID
+    let accountService = await this.accountServiceService.findByAccountServiceId(account_service_id);
+    
+    if (accountService) {
+      // account_service_id is already an account service ID
+      accountServiceId = accountService.id;
+    } else {
+      // account_service_id is a service_id, we need to find or create the account service relationship
       try {
         // Try to verify the account service relation
-        await this.verifyAccountServiceRelation(account_id, finalAccountServiceId);
+        const accountServices = await this.verifyAccountServiceRelation(account_service_id, account_id);
+        accountServiceId = accountServices[0].id;
       } catch (error) {
         // If verification fails, it might be because the account service relationship doesn't exist yet
         // In this case, we need to create it first
@@ -39,25 +47,57 @@ export class AccountRevenueRuleService {
           // Create the account service relationship
           const newAccountService = await this.accountServiceService.create({
             account_id: account_id,
-            service_id: finalAccountServiceId,
+            service_id: account_service_id,
           }, username);
           
-          finalAccountServiceId = newAccountService.id;
-          console.log('Created new account service relationship with ID:', finalAccountServiceId);
+          accountServiceId = newAccountService.id;
+          console.log('Created new account service relationship with ID:', accountServiceId);
         } catch (createError) {
           console.error('Failed to create account service relationship:', createError);
           throw new BadRequestException('Failed to create account service relationship. Please ensure the service exists and try again.');
         }
       }
-    } else {
-      throw new BadRequestException('account_service_id is required. Please provide the service_id from the account service relationship.');
+    }
+    
+    // Find existing tree rule by account_service_id 
+    const treeRule = await this.accountRevenueRuleTreeRepository.findOne({
+      where: {
+        account_service_id: accountServiceId,
+        is_active: true,
+      }
+    });
+
+    console.log('treeRule', treeRule);
+
+    if (treeRule) {
+      // Update existing rule
+      treeRule.charging_metric = charging_metric || treeRule.charging_metric;
+      treeRule.billing_rules = billing_rules || treeRule.billing_rules;
+      treeRule.updated_by = username;
+      treeRule.updated_at = new Date();
+
+      const updatedTreeRule = await this.accountRevenueRuleTreeRepository.save(treeRule);
+      console.log('updatedTreeRule', updatedTreeRule);
+      
+      return {
+        success: true,
+        data: {
+          id: updatedTreeRule.id,
+          account_id: updatedTreeRule.account_id,
+          account_service_id: updatedTreeRule.account_service_id,
+          charging_metric: updatedTreeRule.charging_metric,
+          billing_rules: updatedTreeRule.billing_rules,
+          updated_by: updatedTreeRule.updated_by,
+          updated_at: updatedTreeRule.updated_at,
+        },
+      };
     }
 
     // Deactivate existing tree rules for this account-service pair
     await this.accountRevenueRuleTreeRepository.update(
       { 
         account_id, 
-        account_service_id: finalAccountServiceId,
+        account_service_id: accountServiceId,
         is_active: true
       },
       { is_active: false }
@@ -66,7 +106,7 @@ export class AccountRevenueRuleService {
     // Create new tree rule
     const newTreeRule = this.accountRevenueRuleTreeRepository.create({
       account_id,
-      account_service_id: finalAccountServiceId,
+      account_service_id: accountServiceId,
       charging_metric: charging_metric || {},
       billing_rules: billing_rules || {},
       is_active: true,
@@ -103,7 +143,7 @@ export class AccountRevenueRuleService {
     if (!accountService) {
       console.log(`Account service not found by ID ${account_service_id}, trying to find by account_id and service_id`);
       
-      // Try to find account service by account_id and service_id
+      // Try to find accout service by account_id and service_id
       const accountServices = await this.accountServiceService.findByAccountId(account_id);
       const foundAccountService = accountServices.find(as => as.service?.id === account_service_id);
       
@@ -165,41 +205,6 @@ export class AccountRevenueRuleService {
     return treeRule;
   }
 
-  async updateTree(id: string, updateDto: CreateAccountRevenueRuleTreeDto, username: string): Promise<{ success: boolean; data: any }> {
-    const treeRule = await this.findTreeRuleById(id);
-    
-    // Verify account-service relation if provided
-    if (updateDto.account_service_id && updateDto.account_id &&
-        (updateDto.account_service_id !== treeRule.account_service_id ||
-         updateDto.account_id !== treeRule.account_id)) {
-      await this.verifyAccountServiceRelation(updateDto.account_id, updateDto.account_service_id);
-    }
-    
-    // Update fields
-    if (updateDto.account_id) treeRule.account_id = updateDto.account_id;
-    if (updateDto.account_service_id) treeRule.account_service_id = updateDto.account_service_id;
-    if (updateDto.charging_metric !== undefined) treeRule.charging_metric = updateDto.charging_metric;
-    if (updateDto.billing_rules !== undefined) treeRule.billing_rules = updateDto.billing_rules;
-    
-    treeRule.updated_by = username;
-    treeRule.updated_at = new Date();
-    
-    const savedRule = await this.accountRevenueRuleTreeRepository.save(treeRule);
-    
-    return {
-      success: true,
-      data: {
-        id: savedRule.id,
-        account_id: savedRule.account_id,
-        account_service_id: savedRule.account_service_id,
-        charging_metric: savedRule.charging_metric,
-        billing_rules: savedRule.billing_rules,
-        updated_by: savedRule.updated_by,
-        updated_at: savedRule.updated_at,
-      },
-    };
-  }
-
   async removeTree(id: string): Promise<{ success: boolean }> {
     const treeRule = await this.findTreeRuleById(id);
     
@@ -215,7 +220,7 @@ export class AccountRevenueRuleService {
     const { account_id, account_service_id, rules } = createAccountRevenueRuleDto;
 
     // Verify account-service relation
-    await this.verifyAccountServiceRelation(account_id, account_service_id);
+    await this.verifyAccountServiceRelation(account_service_id, account_id);
 
     // Deactivate existing rules for this account-service pair
     await this.accountRevenueRuleRepository.update(
@@ -257,40 +262,22 @@ export class AccountRevenueRuleService {
     });
   }
 
-  private async verifyAccountServiceRelation(accountId: string, accountServiceId: string): Promise<void> {
+  private async verifyAccountServiceRelation(serviceId: string, accountId: string): Promise<AccountService[]> {
     try {
-      // First, try to find the account service by ID (assuming it's an account_service_id)
-      let accountService = await this.accountServiceService.findOne(accountServiceId);
+      const accountServices = await this.accountServiceService.findByServiceIdAndAccountId(serviceId, accountId);
 
-      // If not found by ID, it might be a service_id, so try to find by account_id and service_id
-      if (!accountService) {
-        console.log(`Account service not found by ID ${accountServiceId}, trying to find by account_id and service_id`);
-        
-        // Try to find account service by account_id and service_id
-        const accountServices = await this.accountServiceService.findByAccountId(accountId);
-        const foundAccountService = accountServices.find(as => as.service?.id === accountServiceId);
-        
-        if (!foundAccountService) {
-          throw new BadRequestException(`No account service relationship found for account ${accountId} and service ${accountServiceId}`);
-        }
-        
-        accountService = foundAccountService;
+      if (!accountServices || accountServices.length === 0) {
+        throw new BadRequestException(`Account service relationship not found for service ${serviceId}`);
       }
 
-      if (!accountService.account) {
-        throw new BadRequestException('Invalid account service relation - missing account data');
-      }
-
-      // Verify account_id matches account_service
-      if (accountService.account.id !== accountId) {
-        throw new BadRequestException('Account ID does not match with the Account Service relation');
-      }
+      console.log('accountServices', accountServices);
+      return accountServices;
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
       }
       console.error('Error in verifyAccountServiceRelation:', error);
-      throw new BadRequestException('Invalid account service relation');
+      throw new BadRequestException(`Invalid account service relation for service ${serviceId}`);
     }
   }
 
@@ -298,7 +285,7 @@ export class AccountRevenueRuleService {
     const { account_id, account_service_id } = findDto;
     
     // Verify account-service relation
-    await this.verifyAccountServiceRelation(account_id, account_service_id);
+    await this.verifyAccountServiceRelation(account_service_id, account_id);
     
     return this.accountRevenueRuleRepository.find({
       where: {
@@ -332,8 +319,8 @@ export class AccountRevenueRuleService {
       
       // Verify new account-service relation
       await this.verifyAccountServiceRelation(
-        updateAccountRevenueRuleDto.account_id, 
-        updateAccountRevenueRuleDto.account_service_id
+        updateAccountRevenueRuleDto.account_service_id,
+        updateAccountRevenueRuleDto.account_id
       );
     }
     
