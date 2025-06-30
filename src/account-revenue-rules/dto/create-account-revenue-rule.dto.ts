@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty, IsString, IsUUID, ValidateNested, IsOptional, IsNumber, IsBoolean } from 'class-validator';
+import { IsArray, IsNotEmpty, IsString, IsUUID, ValidateNested, IsOptional, IsNumber, IsBoolean, IsIn, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -42,14 +42,17 @@ export class CreateAccountRevenueRuleDto {
 export class PackageTierDto {
   @ApiProperty({ example: 100000 })
   @IsNumber()
+  @Min(0)
   min: number;
 
   @ApiProperty({ example: 500000 })
   @IsNumber()
+  @Min(0)
   max: number;
 
   @ApiProperty({ example: 50000 })
   @IsNumber()
+  @Min(0)
   amount: number;
 }
 
@@ -62,23 +65,27 @@ export class PackageDto {
 }
 
 export class AddOnTypeDto {
-  @ApiProperty({ example: 'system_integration' })
+  @ApiProperty({ example: 'system_integration', enum: ['system_integration', 'infrastructure'] })
   @IsString()
+  @IsIn(['system_integration', 'infrastructure'])
   type: string;
 
-  @ApiProperty({ example: 'monthly', required: false })
+  @ApiProperty({ example: 'monthly', enum: ['otc', 'monthly'], required: false })
   @IsOptional()
   @IsString()
+  @IsIn(['otc', 'monthly'])
   billing_type?: string;
 
   @ApiProperty({ example: 25000 })
   @IsNumber()
+  @Min(0)
   amount: number;
 }
 
 export class DedicatedTierDto {
-  @ApiProperty({ example: 'package' })
+  @ApiProperty({ example: 'package', enum: ['package', 'non_package'] })
   @IsString()
+  @IsIn(['package', 'non_package'])
   type: string;
 
   @ApiProperty({ type: PackageDto, required: false })
@@ -87,14 +94,16 @@ export class DedicatedTierDto {
   @Type(() => PackageDto)
   package?: PackageDto;
 
-  @ApiProperty({ example: 'machine_only', required: false })
+  @ApiProperty({ example: 'machine_only', enum: ['machine_only', 'service_only'], required: false })
   @IsOptional()
   @IsString()
+  @IsIn(['machine_only', 'service_only'])
   non_package_type?: string;
 
   @ApiProperty({ example: 100000, required: false })
   @IsOptional()
   @IsNumber()
+  @Min(0)
   amount?: number;
 
   @ApiProperty({ example: true, required: false })
@@ -119,38 +128,47 @@ export class DedicatedDto {
 }
 
 export class NonDedicatedTierDto {
-  @ApiProperty({ example: 'transaction_fee' })
+  @ApiProperty({ example: 'transaction_fee', enum: ['transaction_fee', 'subscription', 'add_ons'] })
   @IsString()
+  @IsIn(['transaction_fee', 'subscription', 'add_ons'])
   type: string;
 
-  @ApiProperty({ example: 'fixed_rate', required: false })
+  @ApiProperty({ example: 'fixed_rate', enum: ['fixed_rate', 'percentage'], required: false })
   @IsOptional()
   @IsString()
+  @IsIn(['fixed_rate', 'percentage'])
   transaction_fee_type?: string;
 
   @ApiProperty({ example: 5000, required: false })
   @IsOptional()
   @IsNumber()
+  @Min(0)
   fixed_rate_value?: number;
 
   @ApiProperty({ example: 2.5, required: false })
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(100)
   percentage_value?: number;
 
-  @ApiProperty({ example: 'monthly', required: false })
+  @ApiProperty({ example: 'monthly', enum: ['monthly', 'yearly'], required: false })
   @IsOptional()
   @IsString()
+  @IsIn(['monthly', 'yearly'])
   subscription_type?: string;
 
   @ApiProperty({ example: 50000, required: false })
   @IsOptional()
   @IsNumber()
+  @Min(0)
   subscription_amount?: number;
 
   @ApiProperty({ example: 10, required: false })
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(100)
   yearly_discount?: number;
 
   @ApiProperty({ type: [AddOnTypeDto], required: false })
@@ -170,8 +188,9 @@ export class NonDedicatedDto {
 }
 
 export class ChargingMetricDto {
-  @ApiProperty({ example: 'dedicated' })
+  @ApiProperty({ example: 'dedicated', enum: ['dedicated', 'non_dedicated'] })
   @IsString()
+  @IsIn(['dedicated', 'non_dedicated'])
   type: string;
 
   @ApiProperty({ type: DedicatedDto, required: false })
@@ -193,21 +212,24 @@ export class AutoDeductDto {
   is_enabled: boolean;
 }
 
-export class ManualInvoiceDto {
-  @ApiProperty({ example: 7 })
-  @IsNumber()
-  due_days: number;
+export class TransactionDto {
+  @ApiProperty({ example: 'weekly', enum: ['weekly', 'monthly'] })
+  @IsString()
+  @IsIn(['weekly', 'monthly'])
+  schedule: string;
 }
 
-export class TransactionDto {
-  @ApiProperty({ example: 'weekly' })
+export class SubscriptionDto {
+  @ApiProperty({ example: 'monthly', enum: ['monthly', 'yearly'] })
   @IsString()
+  @IsIn(['monthly', 'yearly'])
   schedule: string;
 }
 
 export class PostPaidDto {
-  @ApiProperty({ example: 'transaction' })
+  @ApiProperty({ example: 'transaction', enum: ['transaction', 'subscription'] })
   @IsString()
+  @IsIn(['transaction', 'subscription'])
   type: string;
 
   @ApiProperty({ type: TransactionDto, required: false })
@@ -216,15 +238,23 @@ export class PostPaidDto {
   @Type(() => TransactionDto)
   transaction?: TransactionDto;
 
+  @ApiProperty({ type: SubscriptionDto, required: false })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SubscriptionDto)
+  subscription?: SubscriptionDto;
+
   @ApiProperty({ example: 1, required: false })
   @IsOptional()
   @IsNumber()
+  @Min(0)
   custom_fee?: number;
 }
 
 export class BillingMethodTypeDto {
-  @ApiProperty({ example: 'auto_deduct' })
+  @ApiProperty({ example: 'auto_deduct', enum: ['auto_deduct', 'post_paid'] })
   @IsString()
+  @IsIn(['auto_deduct', 'post_paid'])
   type: string;
 
   @ApiProperty({ type: AutoDeductDto, required: false })
@@ -232,12 +262,6 @@ export class BillingMethodTypeDto {
   @ValidateNested()
   @Type(() => AutoDeductDto)
   auto_deduct?: AutoDeductDto;
-
-  @ApiProperty({ type: ManualInvoiceDto, required: false })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => ManualInvoiceDto)
-  manual_invoice?: ManualInvoiceDto;
 
   @ApiProperty({ type: PostPaidDto, required: false })
   @IsOptional()
@@ -255,19 +279,23 @@ export class BillingMethodDto {
 }
 
 export class TaxRulesDto {
-  @ApiProperty({ example: 'include' })
+  @ApiProperty({ example: 'include', enum: ['include', 'exclude'] })
   @IsString()
+  @IsIn(['include', 'exclude'])
   type: string;
 
   @ApiProperty({ example: 11, required: false })
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(100)
   rate?: number;
 }
 
 export class TermOfPaymentDto {
-  @ApiProperty({ example: 30 })
+  @ApiProperty({ example: 30, enum: [14, 30] })
   @IsNumber()
+  @IsIn([14, 30])
   days: number;
 }
 
