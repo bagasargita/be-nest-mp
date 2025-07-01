@@ -25,6 +25,10 @@ import { AccountDocumentModule } from './account-document/account-document.modul
 import { DocumentTypeModule } from './document-type/document-type.module';
 import { RevenueRuleModule } from './revenue-rules/revenue-rules.module';
 import { AccountRevenueRulesModule } from './account-revenue-rules/account-revenue-rules.module';
+import { RoleModule } from './role/role.module';
+import { PermissionModule } from './permission/permission.module';
+import { UserModule } from './user/user.module';
+import { MenuModule } from './menu/menu.module';
 
 @Module({
   imports: [
@@ -67,6 +71,10 @@ import { AccountRevenueRulesModule } from './account-revenue-rules/account-reven
     DocumentTypeModule,
     RevenueRuleModule,
     AccountRevenueRulesModule,
+    RoleModule,
+    PermissionModule,
+    UserModule,
+    MenuModule,
   ],
   providers: [
     {
