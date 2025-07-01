@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../core/domain/entities/user.entity';
 import { Menu } from '../menu/entities/menu.entity';
 import { Permission } from '../permission/entities/permission.entity';
 import { In } from 'typeorm';
+import * as bcrypt from 'bcrypt';
+import { Role } from 'src/role/entities/role.entity';
+import { CreateUserDto } from './dto/create-user.dto';
+import { FilterUserDto } from './dto/filter-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UserService {
@@ -17,10 +22,180 @@ export class UserService {
     @InjectRepository(Menu)
     private menuRepository: Repository<Menu>,
     @InjectRepository(Permission)
-    private permissionRepository: Repository<Permission>
+    private permissionRepository: Repository<Permission>,
+    @InjectRepository(Role)
+    private roleRepository: Repository<Role>
   ) {}
 
-  // Metode lain dari service...
+  /**
+   * Find all active users with their roles.
+   * @returns Promise<User[]>
+   */
+  async findAll(filterDto: FilterUserDto = {}): Promise<User[]> {
+    const { search, isActive } = filterDto;
+    const query = this.userRepository.createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'roles');
+
+    // Apply filters if provided
+    if (isActive !== undefined) {
+      query.andWhere('user.isActive = :isActive', { isActive });
+    } else {
+      // Default to active users only
+      query.andWhere('user.isActive = :isActive', { isActive: true });
+    }
+
+    if (search) {
+      query.andWhere(
+        '(user.username LIKE :search OR user.email LIKE :search OR user.fullName LIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    return query.getMany();
+  }
+
+  async findOne(id: string): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id, isActive: true },
+      relations: { roles: true }
+    });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    return user;
+  }
+
+  async create(createUserDto: CreateUserDto, createdBy: string): Promise<User> {
+    // Check if username or email already exists
+    const existingUser = await this.userRepository.findOne({
+      where: [
+        { username: createUserDto.username },
+        { email: createUserDto.email }
+      ]
+    });
+
+    if (existingUser) {
+      if (existingUser.username === createUserDto.username) {
+        throw new BadRequestException(`Username ${createUserDto.username} is already taken`);
+      } else {
+        throw new BadRequestException(`Email ${createUserDto.email} is already registered`);
+      }
+    }
+
+    // Hash the password
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(createUserDto.password, salt);
+
+    // Create user entity
+    const user = this.userRepository.create({
+      // Only include properties that exist in the User entity
+      // If 'username', 'email', 'fullName', etc. are not defined in User entity, remove them here
+      // Add only the properties that are defined in User entity
+      ...(typeof createUserDto.username !== 'undefined' && { username: createUserDto.username }),
+      ...(typeof createUserDto.email !== 'undefined' && { email: createUserDto.email }),
+      ...(typeof createUserDto.firstName !== 'undefined' && { firstName: createUserDto.firstName }),
+      ...(typeof createUserDto.lastName !== 'undefined' && { lastName: createUserDto.lastName }),
+      password: hashedPassword,
+      isActive: createUserDto.isActive ?? true,
+      createdBy,
+      createdAt: new Date(),
+    } as Partial<User>);
+
+    // Handle role assignments if provided
+    if (createUserDto.roleIds && createUserDto.roleIds.length > 0) {
+      const roles = await this.roleRepository.find({
+        where: { id: In(createUserDto.roleIds), isActive: true }
+      });
+      user.roles = roles;
+    }
+
+    const savedUser = await this.userRepository.save(user as User);
+    return savedUser;
+  }
+
+  async update(id: string, updateUserDto: UpdateUserDto, updatedBy: string): Promise<User> {
+    const user = await this.findOne(id);
+    
+    // Check for unique constraints if updating username or email
+    if (updateUserDto.username && updateUserDto.username !== user.username) {
+      const existingUsername = await this.userRepository.findOne({
+        where: { username: updateUserDto.username }
+      });
+      if (existingUsername) {
+        throw new BadRequestException(`Username ${updateUserDto.username} is already taken`);
+      }
+    }
+
+    if (updateUserDto.email && updateUserDto.email !== user.email) {
+      const existingEmail = await this.userRepository.findOne({
+        where: { email: updateUserDto.email }
+      });
+      if (existingEmail) {
+        throw new BadRequestException(`Email ${updateUserDto.email} is already registered`);
+      }
+    }
+
+    // Handle password change if provided
+    if (updateUserDto.newPassword) {
+      const salt = await bcrypt.genSalt();
+      const hashedPassword = await bcrypt.hash(updateUserDto.newPassword, salt);
+      user.password = hashedPassword;
+    }
+
+    // Update basic fields
+    if (updateUserDto.email) user.email = updateUserDto.email;
+    if (updateUserDto.username) user.username = updateUserDto.username;
+    if (updateUserDto.isActive !== undefined) user.isActive = updateUserDto.isActive;
+    
+    user.updatedBy = updatedBy;
+    user.updatedAt = new Date();
+
+    // Update role assignments if provided
+    if (updateUserDto.roleIds) {
+      const roles = await this.roleRepository.find({
+        where: { id: In(updateUserDto.roleIds), isActive: true }
+      });
+      user.roles = roles;
+    }
+
+    return this.userRepository.save(user);
+  }
+
+  async remove(id: string, updatedBy: string): Promise<void> {
+    const user = await this.findOne(id);
+    user.isActive = false;
+    user.updatedBy = updatedBy;
+    user.updatedAt = new Date();
+    await this.userRepository.save(user);
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    // Find the user
+    const user = await this.userRepository.findOne({
+      where: { id: userId, isActive: true },
+      select: ['id', 'password']
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update user with new password
+    user.password = hashedPassword;
+    await this.userRepository.save(user);
+
+    return { message: 'Password changed successfully' };
+  }
 
   async getUserMenusAndPermissions(userId: string) {
     // Gunakan findOne dengan opsi relations yang tepat
