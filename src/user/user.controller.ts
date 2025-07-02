@@ -9,7 +9,8 @@ import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { FilterUserDto } from './dto/filter-user.dto';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ProfileDto } from './dto/profile-user.dto';
+import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -22,7 +23,6 @@ export class UserController {
   @UseGuards(PermissionsGuard)
   @RequirePermissions('user:create')
   create(@Body() createUserDto: CreateUserDto, @Request() req) {
-    console.log('Received user creation request:', createUserDto);
     return this.userService.create(createUserDto, req.user.username);
   }
 
@@ -31,6 +31,28 @@ export class UserController {
   @RequirePermissions('user:read')
   findAll(@Query() filterUserDto: FilterUserDto) {
     return this.userService.findAll(filterUserDto);
+  }
+
+  @Get('me/profile')
+  @ApiOperation({ summary: 'Get current user profile' })
+  @UseGuards(JwtAuthGuard)
+  async getMyProfile(@Request() req) {
+    const userId = req.user.id;
+    return this.userService.getUserProfile(userId);
+  }
+
+  @Patch('me/profile')
+  @ApiOperation({ summary: 'Update current user profile' })
+  @UseGuards(JwtAuthGuard)
+  async updateMyProfile(
+    @Body() profileDto: ProfileDto,
+    @Request() req
+  ) {
+    return this.userService.updateUserProfile(
+      req.user.id,
+      profileDto,
+      req.user.username
+    );
   }
 
   @Get('me/menus-permissions')

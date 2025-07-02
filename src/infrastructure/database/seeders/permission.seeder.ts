@@ -15,7 +15,7 @@ export default class PermissionSeeder implements Seeder {
     }
 
     // Define resource types
-    const resources = ['user', 'role', 'menu'];
+    const resources = ['user', 'role', 'menu', 'permission'];
     // Define actions
     const actions = ['create', 'read', 'update', 'delete'];
 

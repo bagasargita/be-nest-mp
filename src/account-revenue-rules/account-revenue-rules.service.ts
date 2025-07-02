@@ -39,10 +39,6 @@ export class AccountRevenueRuleService {
         const accountServices = await this.verifyAccountServiceRelation(account_service_id, account_id);
         accountServiceId = accountServices[0].id;
       } catch (error) {
-        // If verification fails, it might be because the account service relationship doesn't exist yet
-        // In this case, we need to create it first
-        console.log('Account service relationship not found, creating it first...');
-        
         try {
           // Create the account service relationship
           const newAccountService = await this.accountServiceService.create({
@@ -51,7 +47,6 @@ export class AccountRevenueRuleService {
           }, username);
           
           accountServiceId = newAccountService.id;
-          console.log('Created new account service relationship with ID:', accountServiceId);
         } catch (createError) {
           console.error('Failed to create account service relationship:', createError);
           throw new BadRequestException('Failed to create account service relationship. Please ensure the service exists and try again.');
@@ -67,8 +62,6 @@ export class AccountRevenueRuleService {
       }
     });
 
-    console.log('treeRule', treeRule);
-
     if (treeRule) {
       // Update existing rule
       treeRule.charging_metric = charging_metric || treeRule.charging_metric;
@@ -77,7 +70,6 @@ export class AccountRevenueRuleService {
       treeRule.updated_at = new Date();
 
       const updatedTreeRule = await this.accountRevenueRuleTreeRepository.save(treeRule);
-      console.log('updatedTreeRule', updatedTreeRule);
       
       return {
         success: true,
@@ -141,14 +133,11 @@ export class AccountRevenueRuleService {
     
     // If not found by ID, it might be a service_id, so try to find by account_id and service_id
     if (!accountService) {
-      console.log(`Account service not found by ID ${account_service_id}, trying to find by account_id and service_id`);
-      
       // Try to find accout service by account_id and service_id
       const accountServices = await this.accountServiceService.findByAccountId(account_id);
       const foundAccountService = accountServices.find(as => as.service?.id === account_service_id);
       
       if (!foundAccountService) {
-        console.log('Account service relationship not found, returning empty data');
         return {
           success: true,
           data: {
@@ -270,7 +259,6 @@ export class AccountRevenueRuleService {
         throw new BadRequestException(`Account service relationship not found for service ${serviceId}`);
       }
 
-      console.log('accountServices', accountServices);
       return accountServices;
     } catch (error) {
       if (error instanceof BadRequestException) {

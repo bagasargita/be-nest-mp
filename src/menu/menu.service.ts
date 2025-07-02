@@ -66,7 +66,6 @@ export class MenuService {
     const resourceType = this.extractResourceTypeFromPath(menu.path);
     
     if (!resourceType) {
-      console.log('Could not extract resource type from menu path:', menu.path);
       return;
     }
     
@@ -105,7 +104,6 @@ export class MenuService {
         }
       }
       
-      console.log(`Created ${permissions.length} permissions for menu: ${menu.name}`);
     } catch (error) {
       console.error('Error creating permissions for menu:', error);
     }

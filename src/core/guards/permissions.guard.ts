@@ -14,13 +14,12 @@ export class PermissionsGuard implements CanActivate {
         context.getClass(),
       ],
     );
-    
+
     if (!requiredPermissions || requiredPermissions.length === 0) {
       return true;
     }
     
     const { user } = context.switchToHttp().getRequest();
-    
     if (!user) {
       throw new ForbiddenException('You do not have sufficient permissions');
     }
@@ -38,13 +37,20 @@ export class PermissionsGuard implements CanActivate {
     }
     
     // For regular users, check specific permissions
-    if (!user.permissions) {
+    if (!user.permissions || !Array.isArray(user.permissions)) {
+      console.error(`User ${user.username} has no permissions array`);
       throw new ForbiddenException('You do not have sufficient permissions');
     }
-    
-    const hasPermission = requiredPermissions.some(permission => 
-      user.permissions.some(p => p.code === permission)
-    );
+
+    const hasPermission = requiredPermissions.some(permission => {
+      try {
+        const found = user.permissions.some(p => p.code === permission);
+        return found;
+      } catch (error) {
+        console.error(`Error checking permission ${permission}:`, error);
+        return false;
+      }
+    });
     
     if (!hasPermission) {
       throw new ForbiddenException('You do not have sufficient permissions');

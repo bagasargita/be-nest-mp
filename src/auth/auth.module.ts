@@ -4,12 +4,14 @@ import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthController } from '../presentation/controllers/auth.controller';
 import { AuthService } from '../infrastructure/services/auth.service';
-import { JwtStrategy } from '../infrastructure/strategies/jwt.strategy';
+import { JwtStrategy } from 'src/infrastructure/strategies/jwt.strategy';
 import { User } from '../core/domain/entities/user.entity';
 import { UserRepository } from '../infrastructure/repositories/user.repository';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
   imports: [
+    UserModule,
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your-secret-key',

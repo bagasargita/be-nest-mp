@@ -33,7 +33,7 @@ export default class UserSeeder implements Seeder {
 
     // Hash passwords
     const saltRounds = 10;
-    const password = await bcrypt.hash('Password123!', saltRounds);
+    const password = await bcrypt.hash('admin123', saltRounds);
 
     // Create superadmin user
     const superadmin = userRepository.create({

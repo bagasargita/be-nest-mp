@@ -1,21 +1,18 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { User } from '../core/domain/entities/user.entity';
 import { Menu } from '../menu/entities/menu.entity';
 import { Permission } from '../permission/entities/permission.entity';
-import { In } from 'typeorm';
-import * as bcrypt from 'bcrypt';
 import { Role } from 'src/role/entities/role.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FilterUserDto } from './dto/filter-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ProfileDto } from './dto/profile-user.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
-  getUserWithPermissions(userId: any) {
-      throw new Error('Method not implemented.');
-  }
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
@@ -27,22 +24,29 @@ export class UserService {
     private roleRepository: Repository<Role>
   ) {}
 
-  /**
-   * Find all active users with their roles.
-   * @returns Promise<User[]>
-   */
+  async getUserWithPermissions(userId: string) {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: userId, isActive: true },
+        relations: { roles: { permissions: true } }
+      });
+      if (!user) return null;
+
+      const permissions = this.collectUniquePermissions(user.roles);
+
+      const { password, ...userWithoutPassword } = user;
+      return { ...userWithoutPassword, permissions };
+    } catch (error) {
+      console.error(`Error getting permissions for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
   async findAll(filterDto: FilterUserDto = {}): Promise<User[]> {
     const { search, isActive } = filterDto;
     const query = this.userRepository.createQueryBuilder('user')
-      .leftJoinAndSelect('user.roles', 'roles');
-
-    // Apply filters if provided
-    if (isActive !== undefined) {
-      query.andWhere('user.isActive = :isActive', { isActive });
-    } else {
-      // Default to active users only
-      query.andWhere('user.isActive = :isActive', { isActive: true });
-    }
+      .leftJoinAndSelect('user.roles', 'roles')
+      .where('user.isActive = :isActive', { isActive: isActive !== undefined ? isActive : true });
 
     if (search) {
       query.andWhere(
@@ -50,7 +54,6 @@ export class UserService {
         { search: `%${search}%` }
       );
     }
-
     return query.getMany();
   }
 
@@ -59,103 +62,59 @@ export class UserService {
       where: { id, isActive: true },
       relations: { roles: true }
     });
-    if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
+    if (!user) throw new NotFoundException(`User with ID ${id} not found`);
     return user;
   }
 
   async create(createUserDto: CreateUserDto, createdBy: string): Promise<User> {
-    // Check if username or email already exists
-    const existingUser = await this.userRepository.findOne({
-      where: [
-        { username: createUserDto.username },
-        { email: createUserDto.email }
-      ]
-    });
+    await this.ensureUniqueUsernameEmail(createUserDto.username, createUserDto.email);
 
-    if (existingUser) {
-      if (existingUser.username === createUserDto.username) {
-        throw new BadRequestException(`Username ${createUserDto.username} is already taken`);
-      } else {
-        throw new BadRequestException(`Email ${createUserDto.email} is already registered`);
-      }
-    }
-
-    // Hash the password
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(createUserDto.password, salt);
-
-    // Create user entity
+    const hashedPassword = await bcrypt.hash(createUserDto.password, await bcrypt.genSalt());
     const user = this.userRepository.create({
-      // Only include properties that exist in the User entity
-      // If 'username', 'email', 'fullName', etc. are not defined in User entity, remove them here
-      // Add only the properties that are defined in User entity
-      ...(typeof createUserDto.username !== 'undefined' && { username: createUserDto.username }),
-      ...(typeof createUserDto.email !== 'undefined' && { email: createUserDto.email }),
-      ...(typeof createUserDto.firstName !== 'undefined' && { firstName: createUserDto.firstName }),
-      ...(typeof createUserDto.lastName !== 'undefined' && { lastName: createUserDto.lastName }),
+      ...(createUserDto.username && { username: createUserDto.username }),
+      ...(createUserDto.email && { email: createUserDto.email }),
+      ...(createUserDto.firstName && { firstName: createUserDto.firstName }),
+      ...(createUserDto.lastName && { lastName: createUserDto.lastName }),
       password: hashedPassword,
       isActive: createUserDto.isActive ?? true,
       createdBy,
       createdAt: new Date(),
     } as Partial<User>);
 
-    // Handle role assignments if provided
-    if (createUserDto.roleIds && createUserDto.roleIds.length > 0) {
-      const roles = await this.roleRepository.find({
+    if (createUserDto.roleIds?.length) {
+      user.roles = await this.roleRepository.find({
         where: { id: In(createUserDto.roleIds), isActive: true }
       });
-      user.roles = roles;
     }
 
-    const savedUser = await this.userRepository.save(user as User);
-    return savedUser;
+    return this.userRepository.save(user as User);
   }
 
   async update(id: string, updateUserDto: UpdateUserDto, updatedBy: string): Promise<User> {
     const user = await this.findOne(id);
-    
-    // Check for unique constraints if updating username or email
+
     if (updateUserDto.username && updateUserDto.username !== user.username) {
-      const existingUsername = await this.userRepository.findOne({
-        where: { username: updateUserDto.username }
-      });
-      if (existingUsername) {
-        throw new BadRequestException(`Username ${updateUserDto.username} is already taken`);
-      }
+      await this.ensureUniqueUsername(updateUserDto.username);
     }
-
     if (updateUserDto.email && updateUserDto.email !== user.email) {
-      const existingEmail = await this.userRepository.findOne({
-        where: { email: updateUserDto.email }
-      });
-      if (existingEmail) {
-        throw new BadRequestException(`Email ${updateUserDto.email} is already registered`);
-      }
+      await this.ensureUniqueEmail(updateUserDto.email);
     }
-
-    // Handle password change if provided
     if (updateUserDto.newPassword) {
-      const salt = await bcrypt.genSalt();
-      const hashedPassword = await bcrypt.hash(updateUserDto.newPassword, salt);
-      user.password = hashedPassword;
+      user.password = await bcrypt.hash(updateUserDto.newPassword, await bcrypt.genSalt());
     }
 
-    // Update basic fields
-    if (updateUserDto.email) user.email = updateUserDto.email;
-    if (updateUserDto.username) user.username = updateUserDto.username;
-    if (updateUserDto.isActive !== undefined) user.isActive = updateUserDto.isActive;
-    
-    user.updatedBy = updatedBy;
-    user.updatedAt = new Date();
+    Object.assign(user, {
+      ...(updateUserDto.email && { email: updateUserDto.email }),
+      ...(updateUserDto.username && { username: updateUserDto.username }),
+      ...(updateUserDto.isActive !== undefined && { isActive: updateUserDto.isActive }),
+      updatedBy,
+      updatedAt: new Date()
+    });
 
-    // Update role assignments if provided
     if (updateUserDto.roleIds) {
-      const roles = await this.roleRepository.find({
+      user.roles = await this.roleRepository.find({
         where: { id: In(updateUserDto.roleIds), isActive: true }
       });
-      user.roles = roles;
     }
 
     return this.userRepository.save(user);
@@ -163,198 +122,262 @@ export class UserService {
 
   async remove(id: string, updatedBy: string): Promise<void> {
     const user = await this.findOne(id);
-    user.isActive = false;
-    user.updatedBy = updatedBy;
-    user.updatedAt = new Date();
+    Object.assign(user, { isActive: false, updatedBy, updatedAt: new Date() });
     await this.userRepository.save(user);
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<{ message: string }> {
-    // Find the user
     const user = await this.userRepository.findOne({
       where: { id: userId, isActive: true },
       select: ['id', 'password']
     });
+    if (!user) throw new NotFoundException(`User with ID ${userId} not found`);
 
-    if (!user) {
-      throw new NotFoundException(`User with ID ${userId} not found`);
-    }
-
-    // Verify current password
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
-    if (!isPasswordValid) {
+    if (!(await bcrypt.compare(currentPassword, user.password))) {
       throw new BadRequestException('Current password is incorrect');
     }
 
-    // Hash the new password
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-    // Update user with new password
-    user.password = hashedPassword;
+    user.password = await bcrypt.hash(newPassword, await bcrypt.genSalt());
     await this.userRepository.save(user);
 
     return { message: 'Password changed successfully' };
   }
 
-  async getUserMenusAndPermissions(userId: string) {
-    // Gunakan findOne dengan opsi relations yang tepat
+  async getUserMenusAndPermissions(userId: string) {    
     const user = await this.userRepository.findOne({
       where: { id: userId, isActive: true },
-      relations: {
-        roles: true
-      }
+      relations: { roles: true }
+    });
+    if (!user) throw new NotFoundException(`User with ID ${userId} not found`);
+
+    const isSuperAdmin = this.isSuperAdmin(user);
+
+    if (isSuperAdmin) {
+      const [allMenus, allPermissions] = await Promise.all([
+        this.menuRepository.find({ where: { isActive: true }, order: { displayOrder: 'ASC' } }),
+        this.permissionRepository.find({ where: { isActive: true } })
+      ]);
+      return {
+        menus: this.buildMenuTree(allMenus.map(this.mapMenu)),
+        permissions: allPermissions.map(this.mapPermission)
+      };
+    }
+    
+    const userWithRoles = await this.userRepository.findOne({
+      where: { id: userId, isActive: true },
+      relations: { roles: { menus: true, permissions: true } }
     });
 
-    if (!user) {
-      throw new NotFoundException(`User with ID ${userId} not found`);
-    }
+    const { menuMap, permissionMap } = this.collectMenusAndPermissions(userWithRoles?.roles);
 
-    // Periksa apakah user adalah superadmin (username atau role)
-    const isSuperAdminByRole = user.roles?.some(role => 
-      role.name.toLowerCase() === 'superadmin' && role.isActive
-    );
-    
-    const isSuperAdminByUsername = user.username.toLowerCase() === 'superadmin';
-    const isSuperAdmin = isSuperAdminByRole || isSuperAdminByUsername;
+    await this.ensureAllParentMenus(menuMap);
 
-    // Jika superadmin (username atau role), berikan akses ke semua menu dan permission
-    if (isSuperAdmin) {
-      // Ambil semua menu yang aktif
-      const allMenus = await this.menuRepository.find({
-        where: { isActive: true },
-        order: { displayOrder: 'ASC' }
-      });
+    return {
+      menus: this.buildMenuTree(Array.from(menuMap.values())),
+      permissions: Array.from(permissionMap.values())
+    };
+  }
 
-      // Ambil semua permission yang aktif
-      const allPermissions = await this.permissionRepository.find({
-        where: { isActive: true }
-      });
-
-      // Gunakan helper untuk memformat data sesuai kebutuhan frontend
-      const menuItems = allMenus.map(menu => ({
-        id: menu.id,
-        name: menu.name,
-        path: menu.path,
-        icon: menu.icon,
-        parentId: menu.parentId,
-        displayOrder: menu.displayOrder,
-        isActive: menu.isActive
-      }));
-
-      const permissionItems = allPermissions.map(perm => ({
-        id: perm.id,
-        code: perm.code,
-        name: perm.name,
-        resourceType: perm.resourceType,
-        actionType: perm.actionType
-      }));
-
-      return {
-        menus: this.buildMenuTree(menuItems),
-        permissions: permissionItems,
-      };
-    } else {
-      // Untuk non-superadmin, gunakan logika yang ada
-      // Ambil detail role dengan menu dan permissions
-      const userWithRoles = await this.userRepository.findOne({
-        where: { id: userId, isActive: true },
-        relations: {
-          roles: {
-            menus: true,
-            permissions: true
-          }
+  private collectUniquePermissions(roles: Role[] = []) {
+    const permissions: Array<{
+      id: string;
+      code: string;
+      name: string;
+      resourceType: string;
+      actionType: string;
+    }> = [];
+    const seen = new Set<string>();
+    roles?.filter(r => r.isActive).forEach(role => {
+      role.permissions?.forEach(permission => {
+        if (!seen.has(permission.code)) {
+          seen.add(permission.code);
+          permissions.push(this.mapPermission(permission));
         }
       });
+    });
+    return permissions;
+  }
 
-      // Use Map to ensure uniqueness and fast lookup
-      const menuMap = new Map<string, any>();
-      const permissionMap = new Map<string, any>();
-
-      // Tangani kasus jika userWithRoles atau roles adalah null/undefined
-      if (userWithRoles && userWithRoles.roles && userWithRoles.roles.length > 0) {
-        // Iterate through active roles only
-        userWithRoles.roles.filter(role => role.isActive).forEach(role => {
-          // Tambahkan menu dari role ini jika active
-          if (role.menus && role.menus.length > 0) {
-            role.menus.filter(menu => menu.isActive).forEach(menu => {
-              if (!menuMap.has(menu.id)) {
-                // Sertakan hanya data yang diperlukan
-                menuMap.set(menu.id, {
-                  id: menu.id,
-                  name: menu.name,
-                  path: menu.path,
-                  icon: menu.icon,
-                  parentId: menu.parentId,
-                  displayOrder: menu.displayOrder,
-                  isActive: menu.isActive
-                });
-              }
-            });
-          }
-
-          // Tambahkan permission dari role ini
-          if (role.permissions && role.permissions.length > 0) {
-            role.permissions.filter(perm => perm.isActive).forEach(permission => {
-              if (!permissionMap.has(permission.id)) {
-                permissionMap.set(permission.id, {
-                  id: permission.id,
-                  code: permission.code,
-                  name: permission.name,
-                  resourceType: permission.resourceType,
-                  actionType: permission.actionType
-                });
-              }
-            });
-          }
-        });
+  private async ensureUniqueUsernameEmail(username: string, email: string) {
+    const existingUser = await this.userRepository.findOne({
+      where: [{ username }, { email }]
+    });
+    if (existingUser) {
+      if (existingUser.username === username) {
+        throw new BadRequestException(`Username ${username} is already taken`);
       }
-
-      return {
-        menus: this.buildMenuTree(Array.from(menuMap.values())),
-        permissions: Array.from(permissionMap.values()),
-      };
+      throw new BadRequestException(`Email ${email} is already registered`);
     }
   }
 
-  // Metode private untuk membangun struktur menu tree
+  private async ensureUniqueUsername(username: string) {
+    const user = await this.userRepository.findOne({ where: { username } });
+    if (user) throw new BadRequestException(`Username ${username} is already taken`);
+  }
+
+  private async ensureUniqueEmail(email: string) {
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (user) throw new BadRequestException(`Email ${email} is already registered`);
+  }
+
+  private isSuperAdmin(user: User): boolean {
+    const isSuperAdminByRole = user.roles?.some(role =>
+      role.name?.toLowerCase() === 'superadmin' && role.isActive
+    );
+    const isSuperAdminByUsername = user.username?.toLowerCase() === 'superadmin';
+    return !!(isSuperAdminByRole || isSuperAdminByUsername);
+  }
+
+  private mapMenu(menu: Menu) {
+    return {
+      id: menu.id,
+      name: menu.name,
+      path: menu.path,
+      icon: menu.icon,
+      parentId: menu.parentId,
+      displayOrder: menu.displayOrder,
+      isActive: menu.isActive
+    };
+  }
+
+  private mapPermission(permission: Permission) {
+    return {
+      id: permission.id,
+      code: permission.code,
+      name: permission.name,
+      resourceType: permission.resourceType,
+      actionType: permission.actionType
+    };
+  }
+
+  private collectMenusAndPermissions(roles: Role[] = []) {
+    const menuMap = new Map<string, any>();
+    const permissionMap = new Map<string, any>();
+    
+    roles?.filter(r => r.isActive).forEach(role => {      
+      role.menus?.filter(m => m.isActive).forEach(menu => {
+        if (!menuMap.has(menu.id)) {
+          menuMap.set(menu.id, this.mapMenu(menu));
+        }
+      });
+      
+      role.permissions?.filter(p => p.isActive).forEach(permission => {
+        if (!permissionMap.has(permission.id)) permissionMap.set(permission.id, this.mapPermission(permission));
+      });
+    });
+    
+    return { menuMap, permissionMap };
+  }
+
+  private async ensureAllParentMenus(menuMap: Map<string, any>) {
+    const missingParentIds = new Set<string>();
+    
+    // Identifikasi parent IDs yang hilang
+    menuMap.forEach(menu => {
+      if (menu.parentId && !menuMap.has(menu.parentId)) {
+        missingParentIds.add(menu.parentId);
+      }
+    });
+
+    // Lakukan pencarian parent secara rekursif
+    while (missingParentIds.size > 0) {      
+      const parentMenus = await this.menuRepository.find({
+        where: { id: In(Array.from(missingParentIds)) }
+      });
+      
+      missingParentIds.clear();
+      
+      parentMenus.forEach(parent => {
+        if (!menuMap.has(parent.id)) {
+          menuMap.set(parent.id, this.mapMenu(parent));
+        }
+        
+        // Periksa apakah parent ini juga memiliki parent yang hilang
+        if (parent.parentId && !menuMap.has(parent.parentId)) {
+          missingParentIds.add(parent.parentId);
+        }
+      });
+    }
+  }
+
   private buildMenuTree(menus: any[]): any[] {
-    // Implementasi buildMenuTree tetap sama seperti sebelumnya...
     const menuMap: Record<string, any> = {};
     const roots: any[] = [];
+    const orphans: any[] = [];
 
-    // Pertama, buat map dari semua menu item dengan children array kosong
     menus.forEach(menu => {
       menuMap[menu.id] = { ...menu, children: [] };
     });
 
-    // Kemudian, hubungkan children ke parent mereka
     menus.forEach(menu => {
       if (menu.parentId && menuMap[menu.parentId]) {
         menuMap[menu.parentId].children.push(menuMap[menu.id]);
+      } else if (menu.parentId) {
+        orphans.push(menuMap[menu.id]);
       } else {
-        // Jika tidak memiliki parent atau parent tidak ditemukan, ini adalah root
         roots.push(menuMap[menu.id]);
       }
     });
 
-    // Urutkan menu berdasarkan displayOrder jika ada
-    roots.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-    
-    // Urutkan juga children di setiap level
-    const sortChildren = (items) => {
-      if (items && items.length > 0) {
-        items.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-        items.forEach(item => {
-          if (item.children && item.children.length > 0) {
-            sortChildren(item.children);
-          }
+    const phantomParents = new Map();
+    orphans.forEach(orphan => {
+      if (!phantomParents.has(orphan.parentId)) {
+        phantomParents.set(orphan.parentId, {
+          id: orphan.parentId,
+          name: `Menu Group ${orphan.parentId.substring(0, 4)}`,
+          path: `#${orphan.parentId}`,
+          children: [],
+          displayOrder: 1000
         });
       }
+      phantomParents.get(orphan.parentId).children.push(orphan);
+    });
+    phantomParents.forEach(parent => roots.push(parent));
+
+    const sortChildren = (items) => {
+      if (items?.length) {
+        items.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+        items.forEach(item => sortChildren(item.children));
+      }
     };
-    
     sortChildren(roots);
-    
+
     return roots;
+  }
+
+  async getUserProfile(userId: string): Promise<any> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId, isActive: true },
+      select: [
+        'id', 'username', 'email', 'firstName', 'lastName',
+        'phoneNumber', 'position', 'createdAt'
+      ]
+    });
+    if (!user) throw new NotFoundException('User profile not found');
+    return user;
+  }
+
+  async updateUserProfile(userId: string, profileDto: ProfileDto, updatedBy: string): Promise<any> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId, isActive: true }
+    });
+    if (!user) throw new NotFoundException('User profile not found');
+
+    if (profileDto.email && profileDto.email !== user.email) {
+      await this.ensureUniqueEmail(profileDto.email);
+    }
+
+    Object.assign(user, {
+      ...(profileDto.email && { email: profileDto.email }),
+      ...(profileDto.firstName && { firstName: profileDto.firstName }),
+      ...(profileDto.lastName && { lastName: profileDto.lastName }),
+      ...(profileDto.phoneNumber !== undefined && { phoneNumber: profileDto.phoneNumber }),
+      ...(profileDto.position !== undefined && { position: profileDto.position }),
+      updatedBy,
+      updatedAt: new Date()
+    });
+
+    await this.userRepository.save(user);
+    return this.getUserProfile(userId);
   }
 }
