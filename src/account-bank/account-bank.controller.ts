@@ -19,6 +19,11 @@ export class AccountBankController {
     return this.service.findOne(id);
   }
 
+  @Get('account/:accountId')
+  findByAccountId(@Param('accountId', ParseUUIDPipe) accountId: string) {
+    return this.service.findByAccountId(accountId);
+  }
+
   @Post()
   create(@Body() dto: CreateAccountBankDto, @Req() req: any) {
     const username = req.user.username;
