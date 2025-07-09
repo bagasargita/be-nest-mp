@@ -6,10 +6,11 @@ import { AccountController } from './account.controller';
 import { AccountAddressModule } from '../account-address/account-address.module';
 import { AccountPICModule } from '../account-pic/account-pic.module';
 import { AccountBankModule } from '../account-bank/account-bank.module';
+import { TypeOfBusiness } from '../type-of-business/entities/type-of-business.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Account]), 
+    TypeOrmModule.forFeature([Account, TypeOfBusiness]), 
     AccountAddressModule,
     AccountPICModule,
     AccountBankModule,],

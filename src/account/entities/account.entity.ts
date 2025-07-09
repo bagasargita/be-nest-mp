@@ -29,6 +29,9 @@ export class Account {
   @JoinColumn({ name: 'type_of_business_id' })
   type_of_business: TypeOfBusiness;
 
+  @Column({ type: 'text', nullable: true })
+  type_of_business_detail: string;
+
   @ManyToOne(() => AccountType, { nullable: true })
   @JoinColumn({ name: 'account_type_id' })
   account_type: AccountType;

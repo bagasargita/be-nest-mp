@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateTypeOfBusinessDto {
@@ -21,6 +21,28 @@ export class CreateTypeOfBusinessDto {
   @IsOptional()
   @IsString()
   detail?: string;
+
+  @ApiProperty(
+    {
+      description: 'Parent type of business ID',
+      example: 'uuid-string',
+      required: false,
+    }
+  )
+  @IsOptional()
+  @IsUUID()
+  parent_id?: string;
+
+  @ApiProperty(
+    {
+      description: 'Is this an "Other" type that allows free text input',
+      example: false,
+      required: false,
+    }
+  )
+  @IsOptional()
+  @IsBoolean()
+  is_other?: boolean;
 
   @IsOptional()
   @IsBoolean()

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 
 @Entity('m_type_of_business')
 export class TypeOfBusiness {
@@ -10,6 +10,19 @@ export class TypeOfBusiness {
 
   @Column({ type: 'text', nullable: true })
   detail: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  parent_id: string;
+
+  @ManyToOne(() => TypeOfBusiness, (parent) => parent.children, { nullable: true })
+  @JoinColumn({ name: 'parent_id' })
+  parent: TypeOfBusiness;
+
+  @OneToMany(() => TypeOfBusiness, (child) => child.parent)
+  children: TypeOfBusiness[];
+
+  @Column({ default: false })
+  is_other: boolean;
 
   @Column({ default: true })
   is_active: boolean;

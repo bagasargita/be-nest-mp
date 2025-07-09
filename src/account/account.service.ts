@@ -1,18 +1,21 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { TreeRepository } from 'typeorm';
+import { TreeRepository, Repository } from 'typeorm';
 import { Account } from './entities/account.entity';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { AccountAddressService } from '../account-address/account-address.service';
 import { AccountPICService } from '../account-pic/account-pic.service';
 import { AccountBankService } from '../account-bank/account-bank.service';
+import { TypeOfBusiness } from '../type-of-business/entities/type-of-business.entity';
 
 @Injectable()
 export class AccountService {
   constructor(
     @InjectRepository(Account)
     private readonly repo: TreeRepository<Account>,
+    @InjectRepository(TypeOfBusiness)
+    private readonly typeOfBusinessRepo: Repository<TypeOfBusiness>,
     private readonly accountAddressService: AccountAddressService,
     private readonly accountPICService: AccountPICService,
     private readonly accountBankService: AccountBankService,
@@ -23,6 +26,7 @@ export class AccountService {
       relations: [
         'industry',
         'type_of_business',
+        'type_of_business.parent',
         'account_type',
         'account_categories',
       ]
@@ -89,6 +93,7 @@ export class AccountService {
       relations: [
         'industry',
         'type_of_business',
+        'type_of_business.parent',
         'account_type',
         'account_categories',
         'parent'
@@ -115,8 +120,27 @@ export class AccountService {
   }
 
   async create(dto: CreateAccountDto, username: string): Promise<Account> {
+    let typeOfBusinessDetail = dto.type_of_business_detail;
+    
+    // If type_of_business_id is provided, auto-populate type_of_business_detail
+    if (dto.type_of_business_id) {
+      const typeOfBusiness = await this.typeOfBusinessRepo.findOne({
+        where: { id: dto.type_of_business_id }
+      });
+      
+      if (typeOfBusiness) {
+        // If it's not an "Other" type, use the detail from type_of_business
+        if (!typeOfBusiness.is_other) {
+          typeOfBusinessDetail = typeOfBusiness.detail;
+        }
+        // If it's an "Other" type, use the provided type_of_business_detail
+        // If no detail is provided for "Other", it will remain null/empty
+      }
+    }
+
     const entity = this.repo.create({
       ...dto,
+      type_of_business_detail: typeOfBusinessDetail,
       industry: dto.industry_id ? { id: dto.industry_id } : undefined,
       type_of_business: dto.type_of_business_id ? { id: dto.type_of_business_id } : undefined,
       account_type: dto.account_type_id ? { id: dto.account_type_id } : undefined,
@@ -129,8 +153,27 @@ export class AccountService {
   }
 
   async update(id: string, dto: UpdateAccountDto, username: string): Promise<Account> {
+    let typeOfBusinessDetail = dto.type_of_business_detail;
+    
+    // If type_of_business_id is provided, auto-populate type_of_business_detail
+    if (dto.type_of_business_id) {
+      const typeOfBusiness = await this.typeOfBusinessRepo.findOne({
+        where: { id: dto.type_of_business_id }
+      });
+      
+      if (typeOfBusiness) {
+        // If it's not an "Other" type, use the detail from type_of_business
+        if (!typeOfBusiness.is_other) {
+          typeOfBusinessDetail = typeOfBusiness.detail;
+        }
+        // If it's an "Other" type, use the provided type_of_business_detail
+        // If no detail is provided for "Other", it will remain null/empty
+      }
+    }
+
     const updateData: any = {
       ...dto,
+      type_of_business_detail: typeOfBusinessDetail,
       updated_by: username,
       updated_at: new Date(),
     };

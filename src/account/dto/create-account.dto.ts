@@ -46,6 +46,15 @@ export class CreateAccountDto {
   type_of_business_id?: string;
 
   @ApiProperty({
+    description: 'Detail of type of business - populated automatically from type_of_business or free text for "Other"',
+    example: 'A type of business that is incorporated and has a separate legal identity.',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  type_of_business_detail?: string;
+
+  @ApiProperty({
     description: 'Account type ID associated with the account', 
     example: 'type_1234567890',
     required: false,
