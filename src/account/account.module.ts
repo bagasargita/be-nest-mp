@@ -1,21 +1,31 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Account } from './entities/account.entity';
 import { AccountService } from './account.service';
 import { AccountController } from './account.controller';
+import { Account } from './entities/account.entity';
+import { TypeOfBusiness } from '../type-of-business/entities/type-of-business.entity';
+import { Industry } from '../industry/entities/industry.entity';
+import { AccountType } from '../accounttype/entities/accounttype.entity';
+import { AccountCategory } from '../account-category/entities/account-category.entity';
 import { AccountAddressModule } from '../account-address/account-address.module';
 import { AccountPICModule } from '../account-pic/account-pic.module';
 import { AccountBankModule } from '../account-bank/account-bank.module';
-import { TypeOfBusiness } from '../type-of-business/entities/type-of-business.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Account, TypeOfBusiness]), 
+    TypeOrmModule.forFeature([
+      Account,
+      TypeOfBusiness,
+      Industry,
+      AccountType,
+      AccountCategory
+    ]),
     AccountAddressModule,
     AccountPICModule,
-    AccountBankModule,],
-  providers: [AccountService],
+    AccountBankModule,
+  ],
   controllers: [AccountController],
+  providers: [AccountService],
   exports: [AccountService],
 })
 export class AccountModule {}
