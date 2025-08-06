@@ -56,6 +56,60 @@ export class Account {
   @Column({ default: true })
   is_active: boolean;
 
+  // Referral fields
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  referral_commission_rate: number;
+
+  @Column({ length: 50, nullable: true })
+  referral_commission_type: string;
+
+  @Column({ type: 'text', nullable: true })
+  referral_commission_notes: string;
+
+  // Location Partner fields
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  location_partner_commission_rate: number;
+
+  @Column({ length: 50, nullable: true })
+  location_partner_commission_type: string;
+
+  @Column({ length: 255, nullable: true })
+  location_partner_territory: string;
+
+  @Column({ default: false })
+  location_partner_exclusive: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  location_partner_commission_notes: string;
+
+  // Vendor fields (existing)
+  @Column({ length: 50, nullable: true })
+  vendor_type: string;
+
+  @Column({ length: 50, nullable: true })
+  vendor_classification: string;
+
+  @Column({ length: 10, nullable: true })
+  vendor_rating: string;
+
+  @Column({ length: 50, nullable: true })
+  tax_id: string;
+
+  @Column({ type: 'date', nullable: true })
+  contract_start_date: Date;
+
+  @Column({ type: 'date', nullable: true })
+  contract_end_date: Date;
+
+  @Column({ length: 50, nullable: true })
+  payment_terms: string;
+
+  @Column({ length: 50, nullable: true })
+  delivery_terms: string;
+
+  @Column({ type: 'text', nullable: true })
+  certification: string;
+
   @Column({ length: 50 })
   created_by: string;
 

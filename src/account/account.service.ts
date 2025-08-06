@@ -2,8 +2,11 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { TreeRepository, Repository, DataSource } from 'typeorm';
 import { Account } from './entities/account.entity';
+import { AccountReferral } from './entities/account-referral.entity';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
+import { CreateAccountReferralDto } from './dto/create-account-referral.dto';
+import { UpdateAccountReferralDto } from './dto/update-account-referral.dto';
 import { MassUploadResultDto, AccountCsvRowDto, SuccessfulAccountDto } from './dto/mass-upload-account.dto';
 import { AccountAddressService } from '../account-address/account-address.service';
 import { AccountPICService } from '../account-pic/account-pic.service';
@@ -18,6 +21,8 @@ export class AccountService {
   constructor(
     @InjectRepository(Account)
     private readonly repo: TreeRepository<Account>,
+    @InjectRepository(AccountReferral)
+    private readonly accountReferralRepo: Repository<AccountReferral>,
     @InjectRepository(TypeOfBusiness)
     private readonly typeOfBusinessRepo: Repository<TypeOfBusiness>,
     @InjectRepository(Industry)
@@ -60,6 +65,22 @@ export class AccountService {
       }),
     );
     return accountsWithRelations;
+  }
+
+  /**
+   * Get accounts in a format suitable for select options
+   */
+  async getAccountOptions(): Promise<{ value: string; label: string; account_no: string }[]> {
+    const accounts = await this.repo.find({
+      select: ['id', 'account_no', 'name'],
+      where: { is_active: true }
+    });
+
+    return accounts.map(account => ({
+      value: account.id,
+      label: `${account.account_no} - ${account.name}`,
+      account_no: account.account_no
+    }));
   }
 
   async generateAccountNo(accountTypeName: string, parentId?: string): Promise<{ account_no: string }> {
@@ -116,17 +137,19 @@ export class AccountService {
     }
 
     // Ambil data terkait dengan relasi lengkap
-    const [addresses, pics, banks] = await Promise.all([
+    const [addresses, pics, banks, referrals] = await Promise.all([
       this.accountAddressService.findByAccountId(id),
       this.accountPICService.findByAccountIdWithRelations(id), // relasi position
-      this.accountBankService.findByAccountIdWithRelations(id) // relasi bank & bank_category
+      this.accountBankService.findByAccountIdWithRelations(id), // relasi bank & bank_category
+      this.getAccountReferrals(id) // referral accounts
     ]);
 
     return {
       ...account,
       account_address: addresses || [],
       account_pic: pics || [],
-      account_bank: banks || []
+      account_bank: banks || [],
+      referral_accounts: referrals || []
     };
   }
 
@@ -150,8 +173,11 @@ export class AccountService {
       }
     }
 
+    // Extract referral_account_ids from dto
+    const { referral_account_ids, ...accountData } = dto;
+
     const entity = this.repo.create({
-      ...dto,
+      ...accountData,
       type_of_business_detail: typeOfBusinessDetail,
       industry: dto.industry_id ? { id: dto.industry_id } : undefined,
       type_of_business: dto.type_of_business_id ? { id: dto.type_of_business_id } : undefined,
@@ -161,7 +187,15 @@ export class AccountService {
       created_by: username,
       created_at: new Date(),
     });
-    return this.repo.save(entity);
+    
+    const savedAccount = await this.repo.save(entity);
+
+    // Handle referral accounts if provided
+    if (referral_account_ids && referral_account_ids.length > 0) {
+      await this.createAccountReferrals(savedAccount.id, referral_account_ids, username);
+    }
+
+    return savedAccount;
   }
 
   async update(id: string, dto: UpdateAccountDto, username: string): Promise<Account> {
@@ -184,8 +218,11 @@ export class AccountService {
       }
     }
 
+    // Extract referral_account_ids from dto
+    const { referral_account_ids, ...accountData } = dto;
+
     const updateData: any = {
-      ...dto,
+      ...accountData,
       type_of_business_detail: typeOfBusinessDetail,
       updated_by: username,
       updated_at: new Date(),
@@ -203,7 +240,21 @@ export class AccountService {
     if (!account) {
       throw new Error(`Account with id ${id} not found`);
     }
-    return this.repo.save(account);
+
+    const savedAccount = await this.repo.save(account);
+
+    // Handle referral accounts update if provided
+    if (referral_account_ids !== undefined) {
+      // Remove existing referrals
+      await this.accountReferralRepo.delete({ account_id: id });
+      
+      // Add new referrals if any
+      if (referral_account_ids.length > 0) {
+        await this.createAccountReferrals(id, referral_account_ids, username);
+      }
+    }
+
+    return savedAccount;
   }
 
   async remove(id: string): Promise<void> {
@@ -700,5 +751,82 @@ export class AccountService {
     });
 
     return csv;
+  }
+
+  // ======================= ACCOUNT REFERRAL METHODS =======================
+
+  /**
+   * Create multiple account referrals
+   */
+  async createAccountReferrals(accountId: string, referralAccountIds: string[], username: string): Promise<void> {
+    const referrals = referralAccountIds.map(referralAccountId => 
+      this.accountReferralRepo.create({
+        account_id: accountId,
+        referral_account_id: referralAccountId,
+        created_by: username,
+        is_active: true,
+      })
+    );
+
+    await this.accountReferralRepo.save(referrals);
+  }
+
+  /**
+   * Get account referrals by account ID
+   */
+  async getAccountReferrals(accountId: string): Promise<AccountReferral[]> {
+    return this.accountReferralRepo.find({
+      where: { account_id: accountId, is_active: true },
+      relations: ['referral_account'],
+    });
+  }
+
+  /**
+   * Create a single account referral
+   */
+  async createAccountReferral(dto: CreateAccountReferralDto, username: string): Promise<AccountReferral> {
+    const referral = this.accountReferralRepo.create({
+      ...dto,
+      created_by: username,
+    });
+
+    return this.accountReferralRepo.save(referral);
+  }
+
+  /**
+   * Update account referral
+   */
+  async updateAccountReferral(id: string, dto: UpdateAccountReferralDto, username: string): Promise<AccountReferral> {
+    const referral = await this.accountReferralRepo.preload({
+      id,
+      ...dto,
+      updated_by: username,
+    });
+
+    if (!referral) {
+      throw new NotFoundException(`Account referral with ID ${id} not found`);
+    }
+
+    return this.accountReferralRepo.save(referral);
+  }
+
+  /**
+   * Delete account referral
+   */
+  async deleteAccountReferral(id: string): Promise<void> {
+    const result = await this.accountReferralRepo.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Account referral with ID ${id} not found`);
+    }
+  }
+
+  /**
+   * Get accounts that were referred by a specific account
+   */
+  async getAccountsReferredBy(referralAccountId: string): Promise<AccountReferral[]> {
+    return this.accountReferralRepo.find({
+      where: { referral_account_id: referralAccountId, is_active: true },
+      relations: ['account'],
+    });
   }
 }

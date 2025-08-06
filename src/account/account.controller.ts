@@ -13,6 +13,7 @@ import { Response } from 'express';
 import { AccountService } from './account.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
+import { UpdateAccountReferralDto } from './dto/update-account-referral.dto';
 import { MassUploadAccountDto, MassUploadResultDto } from './dto/mass-upload-account.dto';
 
 // @UseGuards(JwtAuthGuard)
@@ -25,6 +26,13 @@ export class AccountController {
   @Get()
   findAll() {
     return this.service.findAll();
+  }
+
+  @Get('options')
+  @ApiOperation({ summary: 'Get accounts for select options' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Account options retrieved successfully' })
+  async getAccountOptions() {
+    return this.service.getAccountOptions();
   }
 
   @Get('generate-account-no')
@@ -167,5 +175,48 @@ export class AccountController {
   @Get(':id/tree')
   findDescendants(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.findDescendants(id);
+  }
+
+  // Referral management endpoints
+  @Get(':id/referrals')
+  @ApiOperation({ summary: 'Get account referrals' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Referrals retrieved successfully' })
+  async getAccountReferrals(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.getAccountReferrals(id);
+  }
+
+  @Post(':id/referrals')
+  @ApiOperation({ summary: 'Create account referrals' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Referrals created successfully' })
+  async createAccountReferrals(
+    @Param('id', ParseUUIDPipe) accountId: string,
+    @Body() body: { referral_account_ids: string[] },
+    @Req() req: any
+  ) {
+    const username = req.user?.username || 'system';
+    return this.service.createAccountReferrals(accountId, body.referral_account_ids, username);
+  }
+
+  @Put(':id/referrals/:referralId')
+  @ApiOperation({ summary: 'Update account referral' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Referral updated successfully' })
+  async updateAccountReferral(
+    @Param('id', ParseUUIDPipe) accountId: string,
+    @Param('referralId', ParseUUIDPipe) referralId: string,
+    @Body() dto: UpdateAccountReferralDto,
+    @Req() req: any
+  ) {
+    const username = req.user?.username || 'system';
+    return this.service.updateAccountReferral(referralId, dto, username);
+  }
+
+  @Delete(':id/referrals/:referralId')
+  @ApiOperation({ summary: 'Delete account referral' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Referral deleted successfully' })
+  async deleteAccountReferral(
+    @Param('id', ParseUUIDPipe) accountId: string,
+    @Param('referralId', ParseUUIDPipe) referralId: string
+  ) {
+    return this.service.deleteAccountReferral(referralId);
   }
 }

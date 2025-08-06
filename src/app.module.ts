@@ -29,6 +29,8 @@ import { RoleModule } from './role/role.module';
 import { PermissionModule } from './permission/permission.module';
 import { UserModule } from './user/user.module';
 import { MenuModule } from './menu/menu.module';
+import { CdmProviderModule } from './cdm-provider/cdm-provider.module';
+import { CashLogisticsProviderModule } from './cash-logistics-provider/cash-logistics-provider.module';
 
 @Module({
   imports: [
@@ -75,6 +77,8 @@ import { MenuModule } from './menu/menu.module';
     PermissionModule,
     UserModule,
     MenuModule,
+    CdmProviderModule,
+    CashLogisticsProviderModule,
   ],
   providers: [
     {

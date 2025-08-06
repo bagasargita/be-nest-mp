@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AccountService } from './account.service';
 import { AccountController } from './account.controller';
 import { Account } from './entities/account.entity';
+import { AccountReferral } from './entities/account-referral.entity';
 import { TypeOfBusiness } from '../type-of-business/entities/type-of-business.entity';
 import { Industry } from '../industry/entities/industry.entity';
 import { AccountType } from '../accounttype/entities/accounttype.entity';
@@ -15,6 +16,7 @@ import { AccountBankModule } from '../account-bank/account-bank.module';
   imports: [
     TypeOrmModule.forFeature([
       Account,
+      AccountReferral,
       TypeOfBusiness,
       Industry,
       AccountType,

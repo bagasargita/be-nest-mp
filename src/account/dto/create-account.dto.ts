@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsBoolean, IsArray, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray, IsUUID, IsNumber, IsDecimal } from 'class-validator';
 
 export class CreateAccountDto {
   @ApiProperty({
@@ -86,4 +86,178 @@ export class CreateAccountDto {
   @IsOptional()
   @IsBoolean()
   is_active?: boolean;
+
+  // Referral fields
+  @ApiProperty({
+    description: 'Array of account IDs that referred this account',
+    example: ['ref_acc_1234567890', 'ref_acc_9876543210'],
+    required: false,
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  referral_account_ids?: string[];
+
+  @ApiProperty({
+    description: 'Commission rate for referrals (percentage)',
+    example: 5.5,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  referral_commission_rate?: number;
+
+  @ApiProperty({
+    description: 'Type of commission calculation for referrals',
+    example: 'percentage',
+    enum: ['percentage', 'fixed_amount', 'tiered'],
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  referral_commission_type?: string;
+
+  @ApiProperty({
+    description: 'Notes about referral commission terms',
+    example: 'Commission calculated monthly based on net revenue',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  referral_commission_notes?: string;
+
+  // Location Partner fields
+  @ApiProperty({
+    description: 'Commission rate for location partner (percentage)',
+    example: 10.0,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  location_partner_commission_rate?: number;
+
+  @ApiProperty({
+    description: 'Type of commission calculation for location partner',
+    example: 'percentage',
+    enum: ['percentage', 'fixed_amount', 'revenue_share'],
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  location_partner_commission_type?: string;
+
+  @ApiProperty({
+    description: 'Territory or area coverage for location partner',
+    example: 'Jakarta, Bandung, Surabaya',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  location_partner_territory?: string;
+
+  @ApiProperty({
+    description: 'Whether the location partnership is exclusive',
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  location_partner_exclusive?: boolean;
+
+  @ApiProperty({
+    description: 'Notes about location partner commission terms',
+    example: 'Exclusive partnership for Greater Jakarta area',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  location_partner_commission_notes?: string;
+
+  // Vendor fields
+  @ApiProperty({
+    description: 'Type of vendor',
+    example: 'supplier',
+    enum: ['supplier', 'contractor', 'consultant', 'service_provider', 'distributor', 'other'],
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  vendor_type?: string;
+
+  @ApiProperty({
+    description: 'Vendor classification level',
+    example: 'strategic',
+    enum: ['strategic', 'preferred', 'standard', 'conditional'],
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  vendor_classification?: string;
+
+  @ApiProperty({
+    description: 'Vendor performance rating',
+    example: 'A',
+    enum: ['A', 'B', 'C', 'D'],
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  vendor_rating?: string;
+
+  @ApiProperty({
+    description: 'Tax identification number',
+    example: '12.345.678.9-012.000',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  tax_id?: string;
+
+  @ApiProperty({
+    description: 'Contract start date',
+    example: '2024-01-01',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  contract_start_date?: string;
+
+  @ApiProperty({
+    description: 'Contract end date',
+    example: '2025-12-31',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  contract_end_date?: string;
+
+  @ApiProperty({
+    description: 'Payment terms with vendor',
+    example: 'net_30',
+    enum: ['net_30', 'net_15', 'net_7', 'cod', 'advance', 'custom'],
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  payment_terms?: string;
+
+  @ApiProperty({
+    description: 'Delivery terms with vendor',
+    example: 'fob',
+    enum: ['fob', 'cif', 'ddu', 'ddp', 'ex_works', 'custom'],
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  delivery_terms?: string;
+
+  @ApiProperty({
+    description: 'Vendor certifications',
+    example: 'ISO 9001:2015, ISO 27001:2013',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  certification?: string;
 }
