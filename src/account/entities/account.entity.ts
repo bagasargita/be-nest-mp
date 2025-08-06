@@ -1,10 +1,12 @@
 import {
-  Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Tree, TreeParent, TreeChildren, JoinTable, ManyToMany
+  Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Tree, TreeParent, TreeChildren, JoinTable, ManyToMany, OneToMany, OneToOne
 } from 'typeorm';
 import { Industry } from '../../industry/entities/industry.entity';
 import { TypeOfBusiness } from '../../type-of-business/entities/type-of-business.entity';
 import { AccountType } from '../../accounttype/entities/accounttype.entity';
 import { AccountCategory } from '../../account-category/entities/account-category.entity';
+import { AccountCommissionRate } from './account-commission-rate.entity';
+import { AccountVendor } from './account-vendor.entity';
 
 @Entity('m_account')
 @Tree('closure-table')
@@ -56,59 +58,12 @@ export class Account {
   @Column({ default: true })
   is_active: boolean;
 
-  // Referral fields
-  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
-  referral_commission_rate: number;
+  // Relations to separated entities
+  @OneToMany(() => AccountCommissionRate, (rate) => rate.account, { cascade: true })
+  commission_rates: AccountCommissionRate[];
 
-  @Column({ length: 50, nullable: true })
-  referral_commission_type: string;
-
-  @Column({ type: 'text', nullable: true })
-  referral_commission_notes: string;
-
-  // Location Partner fields
-  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
-  location_partner_commission_rate: number;
-
-  @Column({ length: 50, nullable: true })
-  location_partner_commission_type: string;
-
-  @Column({ length: 255, nullable: true })
-  location_partner_territory: string;
-
-  @Column({ default: false })
-  location_partner_exclusive: boolean;
-
-  @Column({ type: 'text', nullable: true })
-  location_partner_commission_notes: string;
-
-  // Vendor fields (existing)
-  @Column({ length: 50, nullable: true })
-  vendor_type: string;
-
-  @Column({ length: 50, nullable: true })
-  vendor_classification: string;
-
-  @Column({ length: 10, nullable: true })
-  vendor_rating: string;
-
-  @Column({ length: 50, nullable: true })
-  tax_id: string;
-
-  @Column({ type: 'date', nullable: true })
-  contract_start_date: Date;
-
-  @Column({ type: 'date', nullable: true })
-  contract_end_date: Date;
-
-  @Column({ length: 50, nullable: true })
-  payment_terms: string;
-
-  @Column({ length: 50, nullable: true })
-  delivery_terms: string;
-
-  @Column({ type: 'text', nullable: true })
-  certification: string;
+  @OneToOne(() => AccountVendor, (vendor) => vendor.account, { cascade: true })
+  vendor_details: AccountVendor;
 
   @Column({ length: 50 })
   created_by: string;

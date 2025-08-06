@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { TreeRepository, Repository, DataSource } from 'typeorm';
 import { Account } from './entities/account.entity';
 import { AccountReferral } from './entities/account-referral.entity';
+import { AccountCommissionRate } from './entities/account-commission-rate.entity';
+import { AccountVendor } from './entities/account-vendor.entity';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { CreateAccountReferralDto } from './dto/create-account-referral.dto';
@@ -23,6 +25,10 @@ export class AccountService {
     private readonly repo: TreeRepository<Account>,
     @InjectRepository(AccountReferral)
     private readonly accountReferralRepo: Repository<AccountReferral>,
+    @InjectRepository(AccountCommissionRate)
+    private readonly commissionRateRepo: Repository<AccountCommissionRate>,
+    @InjectRepository(AccountVendor)
+    private readonly vendorRepo: Repository<AccountVendor>,
     @InjectRepository(TypeOfBusiness)
     private readonly typeOfBusinessRepo: Repository<TypeOfBusiness>,
     @InjectRepository(Industry)
@@ -45,6 +51,8 @@ export class AccountService {
         'type_of_business.parent',
         'account_type',
         'account_categories',
+        'commission_rates',
+        'vendor_details',
       ]
     });
 
@@ -828,5 +836,89 @@ export class AccountService {
       where: { referral_account_id: referralAccountId, is_active: true },
       relations: ['account'],
     });
+  }
+
+  // Commission Rate Methods
+  async createCommissionRate(accountId: string, commissionData: any, username: string): Promise<AccountCommissionRate> {
+    const commissionRate = this.commissionRateRepo.create({
+      ...commissionData,
+      account_id: accountId,
+      created_by: username,
+    });
+    
+    const saved = await this.commissionRateRepo.save(commissionRate);
+    return Array.isArray(saved) ? saved[0] : saved;
+  }
+
+  async updateCommissionRate(id: string, updateData: any, username: string): Promise<AccountCommissionRate> {
+    const commissionRate = await this.commissionRateRepo.preload({
+      id: id,
+      ...updateData,
+      updated_by: username,
+    });
+
+    if (!commissionRate) {
+      throw new NotFoundException(`Commission rate with id ${id} not found`);
+    }
+
+    return this.commissionRateRepo.save(commissionRate);
+  }
+
+  async getCommissionRates(accountId: string): Promise<AccountCommissionRate[]> {
+    return this.commissionRateRepo.find({
+      where: { account_id: accountId, is_active: true },
+      order: { commission_type: 'ASC' },
+    });
+  }
+
+  async deleteCommissionRate(id: string): Promise<void> {
+    const result = await this.commissionRateRepo.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Commission rate with id ${id} not found`);
+    }
+  }
+
+  // Vendor Details Methods
+  async createOrUpdateVendorDetails(accountId: string, vendorData: any, username: string): Promise<AccountVendor> {
+    const existingVendor = await this.vendorRepo.findOne({
+      where: { account_id: accountId }
+    });
+
+    if (existingVendor) {
+      // Update existing vendor
+      const updatedVendor = await this.vendorRepo.preload({
+        id: existingVendor.id,
+        ...vendorData,
+        updated_by: username,
+      });
+      
+      if (!updatedVendor) {
+        throw new NotFoundException(`Vendor details with id ${existingVendor.id} not found`);
+      }
+      
+      return this.vendorRepo.save(updatedVendor);
+    } else {
+      // Create new vendor
+      const vendor = this.vendorRepo.create({
+        ...vendorData,
+        account_id: accountId,
+        created_by: username,
+      });
+      const saved = await this.vendorRepo.save(vendor);
+      return Array.isArray(saved) ? saved[0] : saved;
+    }
+  }
+
+  async getVendorDetails(accountId: string): Promise<AccountVendor | null> {
+    return this.vendorRepo.findOne({
+      where: { account_id: accountId, is_active: true },
+    });
+  }
+
+  async deleteVendorDetails(accountId: string): Promise<void> {
+    const result = await this.vendorRepo.delete({ account_id: accountId });
+    if (result.affected === 0) {
+      throw new NotFoundException(`Vendor details for account ${accountId} not found`);
+    }
   }
 }

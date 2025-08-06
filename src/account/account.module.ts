@@ -4,6 +4,8 @@ import { AccountService } from './account.service';
 import { AccountController } from './account.controller';
 import { Account } from './entities/account.entity';
 import { AccountReferral } from './entities/account-referral.entity';
+import { AccountCommissionRate } from './entities/account-commission-rate.entity';
+import { AccountVendor } from './entities/account-vendor.entity';
 import { TypeOfBusiness } from '../type-of-business/entities/type-of-business.entity';
 import { Industry } from '../industry/entities/industry.entity';
 import { AccountType } from '../accounttype/entities/accounttype.entity';
@@ -17,6 +19,8 @@ import { AccountBankModule } from '../account-bank/account-bank.module';
     TypeOrmModule.forFeature([
       Account,
       AccountReferral,
+      AccountCommissionRate,
+      AccountVendor,
       TypeOfBusiness,
       Industry,
       AccountType,

@@ -1,7 +1,7 @@
 import { 
   Query, Controller, Get, Post, Body, Param, Put, Patch, Delete, 
   ParseUUIDPipe, Req, UseInterceptors, UploadedFile, HttpStatus, Res,
-  BadRequestException
+  BadRequestException, UseGuards
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { 
@@ -9,14 +9,14 @@ import {
   ApiConsumes
 } from '@nestjs/swagger';
 import { Response } from 'express';
-// import { JwtAuthGuard } from 'src/infrastructure/guards/auth.guard';
+import { JwtAuthGuard } from 'src/infrastructure/guards/auth.guard';
 import { AccountService } from './account.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { UpdateAccountReferralDto } from './dto/update-account-referral.dto';
 import { MassUploadAccountDto, MassUploadResultDto } from './dto/mass-upload-account.dto';
 
-// @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard)
 @ApiTags('Account')
 @ApiBearerAuth()
 @Controller('account')
@@ -218,5 +218,71 @@ export class AccountController {
     @Param('referralId', ParseUUIDPipe) referralId: string
   ) {
     return this.service.deleteAccountReferral(referralId);
+  }
+
+  // Commission Rate Endpoints
+  @Post(':id/commission-rates')
+  @ApiOperation({ summary: 'Create commission rate for account' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Commission rate created successfully' })
+  async createCommissionRate(
+    @Param('id', ParseUUIDPipe) accountId: string,
+    @Body() commissionData: any,
+    @Req() req: any
+  ) {
+    const username = req.user?.username || 'system';
+    return this.service.createCommissionRate(accountId, commissionData, username);
+  }
+
+  @Get(':id/commission-rates')
+  @ApiOperation({ summary: 'Get commission rates for account' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Commission rates retrieved successfully' })
+  async getCommissionRates(@Param('id', ParseUUIDPipe) accountId: string) {
+    return this.service.getCommissionRates(accountId);
+  }
+
+  @Put('commission-rates/:commissionRateId')
+  @ApiOperation({ summary: 'Update commission rate' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Commission rate updated successfully' })
+  async updateCommissionRate(
+    @Param('commissionRateId', ParseUUIDPipe) commissionRateId: string,
+    @Body() updateData: any,
+    @Req() req: any
+  ) {
+    const username = req.user?.username || 'system';
+    return this.service.updateCommissionRate(commissionRateId, updateData, username);
+  }
+
+  @Delete('commission-rates/:commissionRateId')
+  @ApiOperation({ summary: 'Delete commission rate' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Commission rate deleted successfully' })
+  async deleteCommissionRate(@Param('commissionRateId', ParseUUIDPipe) commissionRateId: string) {
+    return this.service.deleteCommissionRate(commissionRateId);
+  }
+
+  // Vendor Details Endpoints
+  @Post(':id/vendor-details')
+  @ApiOperation({ summary: 'Create or update vendor details for account' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Vendor details created/updated successfully' })
+  async createOrUpdateVendorDetails(
+    @Param('id', ParseUUIDPipe) accountId: string,
+    @Body() vendorData: any,
+    @Req() req: any
+  ) {
+    const username = req.user?.username || 'system';
+    return this.service.createOrUpdateVendorDetails(accountId, vendorData, username);
+  }
+
+  @Get(':id/vendor-details')
+  @ApiOperation({ summary: 'Get vendor details for account' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Vendor details retrieved successfully' })
+  async getVendorDetails(@Param('id', ParseUUIDPipe) accountId: string) {
+    return this.service.getVendorDetails(accountId);
+  }
+
+  @Delete(':id/vendor-details')
+  @ApiOperation({ summary: 'Delete vendor details for account' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Vendor details deleted successfully' })
+  async deleteVendorDetails(@Param('id', ParseUUIDPipe) accountId: string) {
+    return this.service.deleteVendorDetails(accountId);
   }
 }
