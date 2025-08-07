@@ -18,6 +18,9 @@ export class AccountPIC {
   @JoinColumn({ name: 'position_id' })
   position: Position;
 
+  @Column({ length: 30, nullable: true })
+  fix_phone_no: string;
+  
   @Column({ length: 30 })
   phone_no: string;
 

@@ -27,8 +27,17 @@ export class CreateAccountPICDto {
   position_id?: string;
 
   @ApiProperty({
+    description: 'Fix Line Phone number of the PIC',
+    example: '62217599220',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  fix_phone_no: string;
+
+  @ApiProperty({
     description: 'Phone number of the PIC',
-    example: '62123456789',
+    example: '628123456789',
     required: false,
   })
   @IsOptional()

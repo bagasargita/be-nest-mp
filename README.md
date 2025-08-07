@@ -13,7 +13,7 @@ A Warehouse Management System (WMS) built with NestJS following Clean Architectu
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v20)
 - PostgreSQL
 - npm or yarn
 
