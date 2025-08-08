@@ -31,6 +31,7 @@ import { UserModule } from './user/user.module';
 import { MenuModule } from './menu/menu.module';
 import { CdmProviderModule } from './cdm-provider/cdm-provider.module';
 import { CashLogisticsProviderModule } from './cash-logistics-provider/cash-logistics-provider.module';
+import { PostalcodeModule } from './postalcode/postalcode.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { CashLogisticsProviderModule } from './cash-logistics-provider/cash-logi
     MenuModule,
     CdmProviderModule,
     CashLogisticsProviderModule,
+    PostalcodeModule,
   ],
   providers: [
     {

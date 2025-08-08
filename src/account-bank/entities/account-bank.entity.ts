@@ -22,6 +22,12 @@ export class AccountBank {
   @Column({ length: 100, nullable: true })
   bank_account_holder_name: string;
 
+  @Column({ length: 100, nullable: true })
+  bank_account_holder_firstname: string;
+  
+  @Column({ length: 100, nullable: true })
+  bank_account_holder_lastname: string;
+
   @ManyToOne(() => BankCategory, { nullable: true })
   @JoinColumn({ name: 'bank_category_id' })
   bank_category: BankCategory;

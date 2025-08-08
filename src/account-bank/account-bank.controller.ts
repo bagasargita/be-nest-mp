@@ -25,11 +25,8 @@ export class AccountBankController {
   }
 
   @Post()
-  create(@Body() dto: CreateAccountBankDto, @Req() req: any) {
-    const username = req.user.username;
-    if (!username) {
-      throw new Error('Username not found in request');
-    }
+  create(@Body() dto: CreateAccountBankDto, @Req() req: any) {    
+    const username = req.user?.username || 'system';
     return this.service.create(dto, username);
   }
 
@@ -39,10 +36,7 @@ export class AccountBankController {
     @Body() dto: UpdateAccountBankDto,
     @Req() req: any,
   ) {
-    const username = req.user.username;
-    if (!username) {
-      throw new Error('Username not found in request');
-    }
+    const username = req.user?.username || 'system';
     return this.service.update(id, dto, username);
   }
 

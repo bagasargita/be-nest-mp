@@ -39,6 +39,7 @@ export class AccountBankService {
       account: { id: dto.account_id } as any,
       bank: { id: dto.bank_id } as any,
       bank_category: dto.bank_category_id ? { id: dto.bank_category_id } : undefined,
+      bank_account_holder_name: `${dto.bank_account_holder_firstname} ${dto.bank_account_holder_lastname}`,
       created_by: username,
       created_at: new Date(),
     });
@@ -48,6 +49,7 @@ export class AccountBankService {
   async update(id: string, dto: UpdateAccountBankDto, username: string): Promise<AccountBank> {
     const updateData: any = {
       ...dto,
+      bank_account_holder_name: `${dto.bank_account_holder_firstname} ${dto.bank_account_holder_lastname}`,
       updated_by: username,
       updated_at: new Date(),
     };
@@ -63,13 +65,6 @@ export class AccountBankService {
       throw new Error(`AccountBank with id ${id} not found`);
     }
     return this.repo.save(accountBank);
-    // Uncomment the following lines if you want to use a different approach
-    // await this.repo.update(id, updateData);
-    // const updated = await this.findOne(id);
-    // if (!updated) {
-    //   throw new Error(`AccountBank with id ${id} not found`);
-    // }
-    // return updated;
   }
 
   async remove(id: string): Promise<void> {
