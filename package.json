@@ -7,6 +7,8 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "build:tsc": "tsc -p tsconfig.build.json --skipLibCheck",
+    "build:prod": "tsc -p tsconfig.build.json --skipLibCheck --removeComments",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "seed": "ts-node -r tsconfig-paths/register src/infrastructure/database/seeder.ts",
     "start": "nest start",
