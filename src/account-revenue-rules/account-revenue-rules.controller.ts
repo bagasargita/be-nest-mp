@@ -2,15 +2,20 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request }
 import { AccountRevenueRuleService } from './account-revenue-rules.service';
 import { CreateAccountRevenueRuleDto, CreateAccountRevenueRuleTreeDto } from './dto/create-account-revenue-rule.dto';
 import { UpdateAccountRevenueRuleDto } from './dto/update-account-revenue-rule.dto';
+import { CreateAccountPackageTierDto, UpdateAccountPackageTierDto } from './dto/account-package-tier.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../infrastructure/guards/auth.guard';
 import { AccountRevenueRule } from './entities/account-revenue-rule.entity';
+import { AccountPackageTierService } from './account-package-tier.service';
 
 @ApiTags('Revenue Rules')
 @UseGuards(JwtAuthGuard)
 @Controller('account-revenue-rules')
 export class AccountRevenueRuleController {
-  constructor(private readonly accountRevenueRuleService: AccountRevenueRuleService) {}
+  constructor(
+    private readonly accountRevenueRuleService: AccountRevenueRuleService,
+    private readonly accountPackageTierService: AccountPackageTierService,
+  ) {}
 
   // Tree structure endpoints
   @Post('tree')
@@ -140,5 +145,60 @@ export class AccountRevenueRuleController {
   @ApiResponse({ status: 200, description: 'Rule deleted successfully' })
   remove(@Param('id') id: string) {
     return this.accountRevenueRuleService.remove(id);
+  }
+
+  // Package Tier endpoints
+  @Post('package-tiers')
+  @ApiOperation({ summary: 'Create a new package tier' })
+  @ApiResponse({ status: 201, description: 'Package tier created successfully' })
+  createPackageTier(@Body() createDto: CreateAccountPackageTierDto, @Request() req) {
+    const username = req.user?.username || 'system';
+    return this.accountPackageTierService.create(createDto, username);
+  }
+
+  @Get('package-tiers/account/:accountId')
+  @ApiOperation({ summary: 'Get all package tiers for an account' })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiResponse({ status: 200, description: 'Return all package tiers for the account' })
+  getPackageTiersByAccount(@Param('accountId') accountId: string) {
+    return this.accountPackageTierService.findByAccountId(accountId);
+  }
+
+  @Get('package-tiers/:id')
+  @ApiOperation({ summary: 'Get a package tier by ID' })
+  @ApiParam({ name: 'id', description: 'Package Tier ID' })
+  @ApiResponse({ status: 200, description: 'Return a package tier' })
+  getPackageTier(@Param('id') id: string) {
+    return this.accountPackageTierService.findOne(id);
+  }
+
+  @Patch('package-tiers/:id')
+  @ApiOperation({ summary: 'Update a package tier' })
+  @ApiParam({ name: 'id', description: 'Package Tier ID' })
+  @ApiResponse({ status: 200, description: 'Package tier updated successfully' })
+  updatePackageTier(@Param('id') id: string, @Body() updateDto: UpdateAccountPackageTierDto, @Request() req) {
+    const username = req.user?.username || 'system';
+    return this.accountPackageTierService.update(id, updateDto, username);
+  }
+
+  @Delete('package-tiers/:id')
+  @ApiOperation({ summary: 'Delete a package tier' })
+  @ApiParam({ name: 'id', description: 'Package Tier ID' })
+  @ApiResponse({ status: 200, description: 'Package tier deleted successfully' })
+  removePackageTier(@Param('id') id: string) {
+    return this.accountPackageTierService.remove(id);
+  }
+
+  @Post('package-tiers/bulk/:accountId')
+  @ApiOperation({ summary: 'Create multiple package tiers for an account' })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiResponse({ status: 201, description: 'Package tiers created successfully' })
+  createBulkPackageTiers(
+    @Param('accountId') accountId: string,
+    @Body() tiers: Array<Omit<CreateAccountPackageTierDto, 'account_id'>>,
+    @Request() req
+  ) {
+    const username = req.user?.username || 'system';
+    return this.accountPackageTierService.createBulk(accountId, tiers, username);
   }
 }

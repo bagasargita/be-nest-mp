@@ -6,16 +6,18 @@ import { AccountRevenueRuleController } from './account-revenue-rules.controller
 import { AccountModule } from 'src/account/account.module';
 import { AccountServiceModule } from 'src/account-service/account-service.module';
 import { AccountRevenueRuleTree } from './entities/account-revenue-rule-tree.entity';
+import { AccountPackageTier } from './entities/account-package-tier.entity';
+import { AccountPackageTierService } from './account-package-tier.service';
 // import { AccountService } from 'src/account/account.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AccountRevenueRule, AccountRevenueRuleTree]),
+    TypeOrmModule.forFeature([AccountRevenueRule, AccountRevenueRuleTree, AccountPackageTier]),
     AccountModule,
     AccountServiceModule,
   ],
   controllers: [AccountRevenueRuleController],
-  providers: [AccountRevenueRuleService],
-  exports: [AccountRevenueRuleService],
+  providers: [AccountRevenueRuleService, AccountPackageTierService],
+  exports: [AccountRevenueRuleService, AccountPackageTierService],
 })
 export class AccountRevenueRulesModule {}
