@@ -78,7 +78,7 @@ export class AccountBillingMethodService {
 
     const results: AccountBillingMethod[] = [];
 
-    // Process each method - ONLY UPDATE existing records, no new creation
+    // Process each method - UPDATE if exists, CREATE if doesn't exist
     for (const methodData of methods) {
       let existingMethod: AccountBillingMethod | undefined;
 
@@ -96,12 +96,6 @@ export class AccountBillingMethodService {
         }
       }
 
-      // If still not found, try to match first available method (for account with single billing method)
-      if (!existingMethod && existingMethods.length === 1) {
-        existingMethod = existingMethods[0];
-        console.log(`🔍 Using single existing billing method: ID ${existingMethod.id}`);
-      }
-
       if (existingMethod) {
         // Update existing method
         console.log(`📝 Updating existing billing method ID: ${existingMethod.id}`);
@@ -113,13 +107,20 @@ export class AccountBillingMethodService {
         const updated = await this.accountBillingMethodRepository.save(existingMethod);
         results.push(updated);
       } else {
-        console.warn(`⚠️ No existing billing method found for account ${accountId} to update with method: ${methodData.method}`);
-        // Note: We're NOT creating new records as per requirement
-        // If you need to create initial billing methods, do it separately
+        // Create new billing method
+        console.log(`➕ Creating new billing method for account ${accountId} with method: ${methodData.method}`);
+        const newMethod = this.accountBillingMethodRepository.create({
+          account_id: accountId,
+          method: methodData.method,
+          description: methodData.description,
+          created_by: username,
+        });
+        const saved = await this.accountBillingMethodRepository.save(newMethod);
+        results.push(saved);
       }
     }
 
-    console.log(`✅ Updated ${results.length} billing methods for account ${accountId}`);
+    console.log(`✅ Processed ${results.length} billing methods for account ${accountId}`);
     return results;
   }
 }
