@@ -7,7 +7,7 @@ import { CreateAccountBillingMethodDto, UpdateAccountBillingMethodDto } from './
 import { CreateAccountTaxRuleDto, UpdateAccountTaxRuleDto } from './dto/account-tax-rule.dto';
 import { CreateAccountTermOfPaymentDto, UpdateAccountTermOfPaymentDto } from './dto/account-term-of-payment.dto';
 import { CreateAccountAddOnsDto, UpdateAccountAddOnsDto } from './dto/account-add-ons.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../infrastructure/guards/auth.guard';
 import { AccountRevenueRule } from './entities/account-revenue-rule.entity';
 import { AccountPackageTierService } from './account-package-tier.service';
@@ -16,6 +16,7 @@ import { AccountTaxRuleService } from './account-tax-rule.service';
 import { AccountTermOfPaymentService } from './account-term-of-payment.service';
 import { AccountAddOnsService } from './account-add-ons.service';
 
+@ApiBearerAuth()
 @ApiTags('Revenue Rules')
 @UseGuards(JwtAuthGuard)
 @Controller('account-revenue-rules')
