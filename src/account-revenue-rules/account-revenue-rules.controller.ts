@@ -126,6 +126,62 @@ export class AccountRevenueRuleController {
     };
   }
 
+  @Get('account/:accountId/billing-method-type/:billingMethodType')
+  @ApiOperation({ 
+    summary: 'Get revenue rules by account and billing method type',
+    description: 'Filter revenue rules by billing method type (auto_deduct or post_paid) to easily distinguish between automatic deduction and post-paid billing methods'
+  })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiParam({ 
+    name: 'billingMethodType', 
+    description: 'Billing method type', 
+    enum: ['auto_deduct', 'post_paid']
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Return revenue rules filtered by billing method type',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            account_id: { type: 'string' },
+            billing_method_type: { type: 'string', enum: ['auto_deduct', 'post_paid'] },
+            add_ons: {
+              type: 'array',
+              items: { type: 'object' }
+            },
+            package_tiers: {
+              type: 'array', 
+              items: { type: 'object' }
+            }
+          }
+        }
+      }
+    }
+  })
+  async findByAccountAndBillingMethodType(
+    @Param('accountId') accountId: string,
+    @Param('billingMethodType') billingMethodType: string,
+  ) {
+    // Validate billing method type
+    if (!['auto_deduct', 'post_paid'].includes(billingMethodType)) {
+      return {
+        success: false,
+        message: 'Invalid billing method type. Must be either "auto_deduct" or "post_paid"',
+      };
+    }
+
+    const data = await this.accountRevenueRuleService.findByAccountAndBillingMethodType(accountId, billingMethodType);
+    
+    return {
+      success: true,
+      data,
+    };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a revenue rule by ID' })
   @ApiParam({ name: 'id', description: 'Revenue Rule ID' })

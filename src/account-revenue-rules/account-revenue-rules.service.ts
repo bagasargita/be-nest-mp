@@ -351,4 +351,130 @@ export class AccountRevenueRuleService {
     
     return { success: true };
   }
+
+  async findByAccountAndBillingMethodType(accountId: string, billingMethodType: string): Promise<any> {
+    // Import the repositories we need
+    const { Repository } = await import('typeorm');
+    const { InjectRepository } = await import('@nestjs/typeorm');
+    const { AccountAddOns } = await import('./entities/account-add-ons.entity');
+    const { AccountPackageTier } = await import('./entities/account-package-tier.entity');
+    
+    // Get data source to create query builders
+    const dataSource = this.accountRevenueRuleRepository.manager.connection;
+    
+    // Query Add-Ons with billing method type filter
+    const addOnsQuery = dataSource
+      .createQueryBuilder()
+      .select([
+        'addons.id',
+        'addons.account_id',
+        'addons.add_ons_type',
+        'addons.billing_type', 
+        'addons.amount',
+        'addons.description',
+        'addons.start_date',
+        'addons.end_date',
+        'addons.billing_method_type',
+        'addons.custom_fee',
+        'addons.requires_custom_development',
+        'addons.custom_development_fee',
+        'addons.api_type',
+        'addons.complexity_level',
+        'addons.base_fee',
+        'addons.is_active',
+        'addons.created_by',
+        'addons.created_at',
+        'addons.updated_by',
+        'addons.updated_at',
+        'billing_method.id as billing_method_id',
+        'billing_method.method as billing_method_name',
+        'billing_method.description as billing_method_description'
+      ])
+      .from('m_account_add_ons', 'addons')
+      .leftJoin('m_account_billing_method', 'billing_method', 'billing_method.id = addons.billing_method_id')
+      .where('addons.account_id = :accountId', { accountId })
+      .andWhere('addons.billing_method_type = :billingMethodType', { billingMethodType })
+      .andWhere('addons.is_active = true');
+    
+    // Query Package Tiers - since they don't have billing_method_type, we get all for the account
+    const packageTiersQuery = dataSource
+      .createQueryBuilder()
+      .select([
+        'tiers.id',
+        'tiers.account_id',
+        'tiers.min_value',
+        'tiers.max_value', 
+        'tiers.amount',
+        'tiers.start_date',
+        'tiers.end_date',
+        'tiers.is_active',
+        'tiers.created_by',
+        'tiers.created_at',
+        'tiers.updated_by',
+        'tiers.updated_at',
+        'billing_method.id as billing_method_id',
+        'billing_method.method as billing_method_name',
+        'billing_method.description as billing_method_description'
+      ])
+      .from('m_account_package_tier', 'tiers')
+      .leftJoin('m_account_billing_method', 'billing_method', 'billing_method.id = tiers.billing_method_id')
+      .where('tiers.account_id = :accountId', { accountId })
+      .andWhere('tiers.is_active = true');
+
+    const [addOnsResults, packageTiersResults] = await Promise.all([
+      addOnsQuery.getRawMany(),
+      packageTiersQuery.getRawMany()
+    ]);
+
+    return {
+      account_id: accountId,
+      billing_method_type: billingMethodType,
+      add_ons: addOnsResults.map(row => ({
+        id: row.id,
+        account_id: row.account_id,
+        add_ons_type: row.add_ons_type,
+        billing_type: row.billing_type,
+        amount: parseFloat(row.amount),
+        description: row.description,
+        start_date: row.start_date,
+        end_date: row.end_date,
+        billing_method_type: row.billing_method_type,
+        custom_fee: parseFloat(row.custom_fee),
+        requires_custom_development: row.requires_custom_development,
+        custom_development_fee: parseFloat(row.custom_development_fee),
+        api_type: row.api_type,
+        complexity_level: row.complexity_level,
+        base_fee: row.base_fee ? parseFloat(row.base_fee) : null,
+        is_active: row.is_active,
+        created_by: row.created_by,
+        created_at: row.created_at,
+        updated_by: row.updated_by,
+        updated_at: row.updated_at,
+        billing_method: row.billing_method_id ? {
+          id: row.billing_method_id,
+          method: row.billing_method_name,
+          description: row.billing_method_description
+        } : null
+      })),
+      package_tiers: packageTiersResults.map(row => ({
+        id: row.id,
+        account_id: row.account_id,
+        min_value: parseFloat(row.min_value),
+        max_value: parseFloat(row.max_value),
+        amount: parseFloat(row.amount),
+        start_date: row.start_date,
+        end_date: row.end_date,
+        is_active: row.is_active,
+        created_by: row.created_by,
+        created_at: row.created_at,
+        updated_by: row.updated_by,
+        updated_at: row.updated_at,
+        billing_method: row.billing_method_id ? {
+          id: row.billing_method_id,
+          method: row.billing_method_name,
+          description: row.billing_method_description
+        } : null
+      }))
+    };
+  }
 }
