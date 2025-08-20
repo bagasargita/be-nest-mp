@@ -1,0 +1,10 @@
+{
+  "account_id": "58885886-7bdc-48fe-ba83-7dfb8892ff53",
+  "add_ons_type": "system_integration",
+  "billing_type": "otc",
+  "amount": 5000000,
+  "description": "Initial system integration setup",
+  "start_date": "2025-01-01",
+  "end_date": "2025-12-31",
+  "created_by": "admin"
+}

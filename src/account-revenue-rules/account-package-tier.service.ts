@@ -151,14 +151,89 @@ export class AccountPackageTierService {
   }
 
   async createBulk(accountId: string, tiers: Array<Omit<CreateAccountPackageTierDto, 'account_id'>>, username: string): Promise<AccountPackageTier[]> {
-    // First, deactivate existing tiers for this account
-    await this.removeByAccountId(accountId);
+    console.log(`🔄 Processing ${tiers.length} package tiers for account ${accountId}`);
+    
+    // Get existing package tiers for this account
+    const existingTiers = await this.accountPackageTierRepository.find({
+      where: { account_id: accountId, is_active: true }
+    });
 
-    // Create new tiers
     const results: AccountPackageTier[] = [];
+
+    // Process each tier
     for (const tierData of tiers) {
-      const tier = await this.create({ ...tierData, account_id: accountId }, username);
-      results.push(tier);
+      let existingTier: AccountPackageTier | undefined;
+
+      // First try to find by ID if provided
+      if (tierData.id) {
+        existingTier = existingTiers.find(existing => existing.id === tierData.id);
+        console.log(`🔍 Looking for tier by ID ${tierData.id}: ${existingTier ? 'Found' : 'Not found'}`);
+      }
+
+      // If not found by ID, fall back to range-based matching for backward compatibility
+      if (!existingTier) {
+        existingTier = existingTiers.find(existing => 
+          Math.abs(existing.min_value - tierData.min_value) < 0.01 && 
+          Math.abs(existing.max_value - tierData.max_value) < 0.01 &&
+          new Date(existing.start_date).toDateString() === new Date(tierData.start_date).toDateString() &&
+          new Date(existing.end_date).toDateString() === new Date(tierData.end_date).toDateString()
+        );
+        if (existingTier) {
+          console.log(`🔍 Found tier by range matching: ID ${existingTier.id}`);
+        }
+      }
+
+      if (existingTier) {
+        // Update existing tier
+        console.log(`📝 Updating existing tier ID: ${existingTier.id}`);
+        Object.assign(existingTier, {
+          ...tierData,
+          start_date: new Date(tierData.start_date),
+          end_date: new Date(tierData.end_date),
+          updated_by: username,
+        });
+        const updated = await this.accountPackageTierRepository.save(existingTier);
+        results.push(updated);
+      } else {
+        // Create new tier
+        console.log(`➕ Creating new tier with min: ${tierData.min_value}, max: ${tierData.max_value}`);
+        const startDate = new Date(tierData.start_date);
+        const endDate = new Date(tierData.end_date);
+        
+        const newTier = this.accountPackageTierRepository.create({
+          ...tierData,
+          account_id: accountId,
+          start_date: startDate,
+          end_date: endDate,
+          created_by: username,
+          is_active: true,
+        });
+        const created = await this.accountPackageTierRepository.save(newTier);
+        results.push(created);
+      }
+    }
+
+    // Deactivate tiers that are no longer in the list
+    const processedIds = tiers
+      .filter(tier => tier.id) // Only existing records have IDs
+      .map(tier => tier.id);
+    
+    const tiersToDeactivate = existingTiers.filter(existing => 
+      !processedIds.includes(existing.id) && 
+      !tiers.some(newTier => !newTier.id && 
+        Math.abs(existing.min_value - newTier.min_value) < 0.01 && 
+        Math.abs(existing.max_value - newTier.max_value) < 0.01 &&
+        existing.start_date.toDateString() === new Date(newTier.start_date).toDateString() &&
+        existing.end_date.toDateString() === new Date(newTier.end_date).toDateString()
+      )
+    );
+
+    console.log(`🗑️ Deactivating ${tiersToDeactivate.length} tiers that are no longer in the list`);
+    for (const tierToDeactivate of tiersToDeactivate) {
+      console.log(`🗑️ Deactivating tier ID: ${tierToDeactivate.id}, range: ${tierToDeactivate.min_value}-${tierToDeactivate.max_value}`);
+      tierToDeactivate.is_active = false;
+      tierToDeactivate.updated_by = username;
+      await this.accountPackageTierRepository.save(tierToDeactivate);
     }
 
     return results;

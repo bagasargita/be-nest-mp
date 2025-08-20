@@ -3,10 +3,18 @@ import { AccountRevenueRuleService } from './account-revenue-rules.service';
 import { CreateAccountRevenueRuleDto, CreateAccountRevenueRuleTreeDto } from './dto/create-account-revenue-rule.dto';
 import { UpdateAccountRevenueRuleDto } from './dto/update-account-revenue-rule.dto';
 import { CreateAccountPackageTierDto, UpdateAccountPackageTierDto } from './dto/account-package-tier.dto';
+import { CreateAccountBillingMethodDto, UpdateAccountBillingMethodDto } from './dto/account-billing-method.dto';
+import { CreateAccountTaxRuleDto, UpdateAccountTaxRuleDto } from './dto/account-tax-rule.dto';
+import { CreateAccountTermOfPaymentDto, UpdateAccountTermOfPaymentDto } from './dto/account-term-of-payment.dto';
+import { CreateAccountAddOnsDto, UpdateAccountAddOnsDto } from './dto/account-add-ons.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../infrastructure/guards/auth.guard';
 import { AccountRevenueRule } from './entities/account-revenue-rule.entity';
 import { AccountPackageTierService } from './account-package-tier.service';
+import { AccountBillingMethodService } from './account-billing-method.service';
+import { AccountTaxRuleService } from './account-tax-rule.service';
+import { AccountTermOfPaymentService } from './account-term-of-payment.service';
+import { AccountAddOnsService } from './account-add-ons.service';
 
 @ApiTags('Revenue Rules')
 @UseGuards(JwtAuthGuard)
@@ -15,6 +23,10 @@ export class AccountRevenueRuleController {
   constructor(
     private readonly accountRevenueRuleService: AccountRevenueRuleService,
     private readonly accountPackageTierService: AccountPackageTierService,
+    private readonly accountBillingMethodService: AccountBillingMethodService,
+    private readonly accountTaxRuleService: AccountTaxRuleService,
+    private readonly accountTermOfPaymentService: AccountTermOfPaymentService,
+    private readonly accountAddOnsService: AccountAddOnsService,
   ) {}
 
   // Tree structure endpoints
@@ -200,5 +212,243 @@ export class AccountRevenueRuleController {
   ) {
     const username = req.user?.username || 'system';
     return this.accountPackageTierService.createBulk(accountId, tiers, username);
+  }
+
+  // Billing Method endpoints
+  @Post('billing-methods')
+  @ApiOperation({ summary: 'Create a new billing method' })
+  @ApiResponse({ status: 201, description: 'Billing method created successfully' })
+  createBillingMethod(@Body() createDto: CreateAccountBillingMethodDto, @Request() req) {
+    const username = req.user?.username || 'system';
+    return this.accountBillingMethodService.create(createDto, username);
+  }
+
+  @Get('billing-methods/account/:accountId')
+  @ApiOperation({ summary: 'Get all billing methods for an account' })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiResponse({ status: 200, description: 'Return all billing methods for the account' })
+  getBillingMethodsByAccount(@Param('accountId') accountId: string) {
+    return this.accountBillingMethodService.findByAccountId(accountId);
+  }
+
+  @Get('billing-methods/:id')
+  @ApiOperation({ summary: 'Get a billing method by ID' })
+  @ApiParam({ name: 'id', description: 'Billing Method ID' })
+  @ApiResponse({ status: 200, description: 'Return a billing method' })
+  getBillingMethod(@Param('id') id: string) {
+    return this.accountBillingMethodService.findOne(id);
+  }
+
+  @Patch('billing-methods/:id')
+  @ApiOperation({ summary: 'Update a billing method' })
+  @ApiParam({ name: 'id', description: 'Billing Method ID' })
+  @ApiResponse({ status: 200, description: 'Billing method updated successfully' })
+  updateBillingMethod(@Param('id') id: string, @Body() updateDto: UpdateAccountBillingMethodDto, @Request() req) {
+    const username = req.user?.username || 'system';
+    return this.accountBillingMethodService.update(id, updateDto, username);
+  }
+
+  @Delete('billing-methods/:id')
+  @ApiOperation({ summary: 'Delete a billing method' })
+  @ApiParam({ name: 'id', description: 'Billing Method ID' })
+  @ApiResponse({ status: 200, description: 'Billing method deleted successfully' })
+  removeBillingMethod(@Param('id') id: string) {
+    return this.accountBillingMethodService.remove(id);
+  }
+
+  @Post('billing-methods/bulk/:accountId')
+  @ApiOperation({ summary: 'Create multiple billing methods for an account' })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiResponse({ status: 201, description: 'Billing methods created successfully' })
+  createBulkBillingMethods(
+    @Param('accountId') accountId: string,
+    @Body() methods: Array<Omit<CreateAccountBillingMethodDto, 'account_id'>>,
+    @Request() req
+  ) {
+    const username = req.user?.username || 'system';
+    return this.accountBillingMethodService.createBulk(accountId, methods, username);
+  }
+
+  // Tax Rule endpoints
+  @Post('tax-rules')
+  @ApiOperation({ summary: 'Create a new tax rule' })
+  @ApiResponse({ status: 201, description: 'Tax rule created successfully' })
+  createTaxRule(@Body() createDto: CreateAccountTaxRuleDto, @Request() req) {
+    const username = req.user?.username || 'system';
+    return this.accountTaxRuleService.create(createDto, username);
+  }
+
+  @Get('tax-rules/account/:accountId')
+  @ApiOperation({ summary: 'Get all tax rules for an account' })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiResponse({ status: 200, description: 'Return all tax rules for the account' })
+  getTaxRulesByAccount(@Param('accountId') accountId: string) {
+    return this.accountTaxRuleService.findByAccountId(accountId);
+  }
+
+  @Get('tax-rules/:id')
+  @ApiOperation({ summary: 'Get a tax rule by ID' })
+  @ApiParam({ name: 'id', description: 'Tax Rule ID' })
+  @ApiResponse({ status: 200, description: 'Return a tax rule' })
+  getTaxRule(@Param('id') id: string) {
+    return this.accountTaxRuleService.findOne(id);
+  }
+
+  @Patch('tax-rules/:id')
+  @ApiOperation({ summary: 'Update a tax rule' })
+  @ApiParam({ name: 'id', description: 'Tax Rule ID' })
+  @ApiResponse({ status: 200, description: 'Tax rule updated successfully' })
+  updateTaxRule(@Param('id') id: string, @Body() updateDto: UpdateAccountTaxRuleDto, @Request() req) {
+    const username = req.user?.username || 'system';
+    return this.accountTaxRuleService.update(id, updateDto, username);
+  }
+
+  @Delete('tax-rules/:id')
+  @ApiOperation({ summary: 'Delete a tax rule' })
+  @ApiParam({ name: 'id', description: 'Tax Rule ID' })
+  @ApiResponse({ status: 200, description: 'Tax rule deleted successfully' })
+  removeTaxRule(@Param('id') id: string) {
+    return this.accountTaxRuleService.remove(id);
+  }
+
+  @Post('tax-rules/bulk/:accountId')
+  @ApiOperation({ summary: 'Create multiple tax rules for an account' })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiResponse({ status: 201, description: 'Tax rules created successfully' })
+  createBulkTaxRules(
+    @Param('accountId') accountId: string,
+    @Body() rules: Array<Omit<CreateAccountTaxRuleDto, 'account_id'>>,
+    @Request() req
+  ) {
+    const username = req.user?.username || 'system';
+    return this.accountTaxRuleService.createBulk(accountId, rules, username);
+  }
+
+  // Term of Payment endpoints
+  @Post('term-of-payment')
+  @ApiOperation({ summary: 'Create a new term of payment' })
+  @ApiResponse({ status: 201, description: 'Term of payment created successfully' })
+  createTermOfPayment(@Body() createDto: CreateAccountTermOfPaymentDto, @Request() req) {
+    const username = req.user?.username || 'system';
+    return this.accountTermOfPaymentService.create(createDto, username);
+  }
+
+  @Get('term-of-payment/account/:accountId')
+  @ApiOperation({ summary: 'Get all terms of payment for an account' })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiResponse({ status: 200, description: 'Return all terms of payment for the account' })
+  getTermOfPaymentByAccount(@Param('accountId') accountId: string) {
+    return this.accountTermOfPaymentService.findByAccountId(accountId);
+  }
+
+  @Get('term-of-payment/:id')
+  @ApiOperation({ summary: 'Get a term of payment by ID' })
+  @ApiParam({ name: 'id', description: 'Term of Payment ID' })
+  @ApiResponse({ status: 200, description: 'Return a term of payment' })
+  getTermOfPayment(@Param('id') id: string) {
+    return this.accountTermOfPaymentService.findOne(id);
+  }
+
+  @Patch('term-of-payment/:id')
+  @ApiOperation({ summary: 'Update a term of payment' })
+  @ApiParam({ name: 'id', description: 'Term of Payment ID' })
+  @ApiResponse({ status: 200, description: 'Term of payment updated successfully' })
+  updateTermOfPayment(@Param('id') id: string, @Body() updateDto: UpdateAccountTermOfPaymentDto, @Request() req) {
+    const username = req.user?.username || 'system';
+    return this.accountTermOfPaymentService.update(id, updateDto, username);
+  }
+
+  @Delete('term-of-payment/:id')
+  @ApiOperation({ summary: 'Delete a term of payment' })
+  @ApiParam({ name: 'id', description: 'Term of Payment ID' })
+  @ApiResponse({ status: 200, description: 'Term of payment deleted successfully' })
+  removeTermOfPayment(@Param('id') id: string) {
+    return this.accountTermOfPaymentService.remove(id);
+  }
+
+  @Post('term-of-payment/create-or-update/:accountId')
+  @ApiOperation({ summary: 'Create or update term of payment for an account' })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiResponse({ status: 201, description: 'Term of payment created or updated successfully' })
+  createOrUpdateTermOfPayment(
+    @Param('accountId') accountId: string,
+    @Body() termData: Omit<CreateAccountTermOfPaymentDto, 'account_id'>,
+    @Request() req
+  ) {
+    const username = req.user?.username || 'system';
+    return this.accountTermOfPaymentService.createOrUpdate(accountId, termData, username);
+  }
+
+  // Add-Ons endpoints
+  @Post('add-ons')
+  @ApiOperation({ summary: 'Create a new add-on' })
+  @ApiResponse({ status: 201, description: 'Add-on created successfully' })
+  createAddOns(@Body() createDto: CreateAccountAddOnsDto, @Request() req) {
+    const username = req.user?.username || 'system';
+    return this.accountAddOnsService.create(createDto, username);
+  }
+
+  @Get('add-ons/account/:accountId')
+  @ApiOperation({ summary: 'Get all add-ons for an account' })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiResponse({ status: 200, description: 'Return all add-ons for the account' })
+  getAddOnsByAccount(@Param('accountId') accountId: string) {
+    return this.accountAddOnsService.findByAccountId(accountId);
+  }
+
+  @Get('add-ons/account/:accountId/type/:addOnsType')
+  @ApiOperation({ summary: 'Get add-ons by account and type' })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiParam({ name: 'addOnsType', description: 'Add-ons Type (system_integration or infrastructure)' })
+  @ApiResponse({ status: 200, description: 'Return add-ons by account and type' })
+  getAddOnsByType(@Param('accountId') accountId: string, @Param('addOnsType') addOnsType: 'system_integration' | 'infrastructure') {
+    return this.accountAddOnsService.findByType(accountId, addOnsType);
+  }
+
+  @Get('add-ons/account/:accountId/billing/:billingType')
+  @ApiOperation({ summary: 'Get add-ons by account and billing type' })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiParam({ name: 'billingType', description: 'Billing Type (otc or monthly)' })
+  @ApiResponse({ status: 200, description: 'Return add-ons by account and billing type' })
+  getAddOnsByBillingType(@Param('accountId') accountId: string, @Param('billingType') billingType: 'otc' | 'monthly') {
+    return this.accountAddOnsService.findByBillingType(accountId, billingType);
+  }
+
+  @Get('add-ons/:id')
+  @ApiOperation({ summary: 'Get an add-on by ID' })
+  @ApiParam({ name: 'id', description: 'Add-on ID' })
+  @ApiResponse({ status: 200, description: 'Return an add-on' })
+  getAddOns(@Param('id') id: string) {
+    return this.accountAddOnsService.findOne(id);
+  }
+
+  @Patch('add-ons/:id')
+  @ApiOperation({ summary: 'Update an add-on' })
+  @ApiParam({ name: 'id', description: 'Add-on ID' })
+  @ApiResponse({ status: 200, description: 'Add-on updated successfully' })
+  updateAddOns(@Param('id') id: string, @Body() updateDto: UpdateAccountAddOnsDto, @Request() req) {
+    const username = req.user?.username || 'system';
+    return this.accountAddOnsService.update(id, updateDto, username);
+  }
+
+  @Delete('add-ons/:id')
+  @ApiOperation({ summary: 'Delete an add-on' })
+  @ApiParam({ name: 'id', description: 'Add-on ID' })
+  @ApiResponse({ status: 200, description: 'Add-on deleted successfully' })
+  removeAddOns(@Param('id') id: string) {
+    return this.accountAddOnsService.remove(id);
+  }
+
+  @Post('add-ons/bulk/:accountId')
+  @ApiOperation({ summary: 'Create multiple add-ons for an account' })
+  @ApiParam({ name: 'accountId', description: 'Account ID' })
+  @ApiResponse({ status: 201, description: 'Add-ons created successfully' })
+  createBulkAddOns(
+    @Param('accountId') accountId: string,
+    @Body() addOnsList: Array<Omit<CreateAccountAddOnsDto, 'account_id'>>,
+    @Request() req
+  ) {
+    const username = req.user?.username || 'system';
+    return this.accountAddOnsService.createBulk(accountId, addOnsList, username);
   }
 }

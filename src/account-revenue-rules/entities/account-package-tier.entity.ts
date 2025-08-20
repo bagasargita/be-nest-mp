@@ -1,7 +1,9 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn, Index } from 'typeorm';
 import { Account } from '../../account/entities/account.entity';
+import { AccountBillingMethod } from './account-billing-method.entity';
 
 @Entity('m_account_package_tier')
+@Index('IDX_account_package_tier_billing_method_id', ['billing_method_id'])
 export class AccountPackageTier {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -12,6 +14,13 @@ export class AccountPackageTier {
   @ManyToOne(() => Account, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'account_id' })
   account: Account;
+
+  @Column({ type: 'uuid', nullable: true, name: 'billing_method_id' })
+  billing_method_id: string;
+
+  @ManyToOne(() => AccountBillingMethod, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'billing_method_id' })
+  billing_method: AccountBillingMethod;
 
   @Column('decimal', { precision: 15, scale: 2 })
   min_value: number;
