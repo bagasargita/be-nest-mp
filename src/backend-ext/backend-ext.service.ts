@@ -1,0 +1,531 @@
+import { Injectable, Logger, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+import { BackendExt } from './entities/backend-ext.entity';
+import { CreateBackendExtDto } from './dto/create-backend-ext.dto';
+import { UpdateBackendExtDto } from './dto/update-backend-ext.dto';
+import { OAuthTokenRequestDto, OAuthTokenResponseDto, ExternalApiRequestDto } from './dto/oauth-token.dto';
+
+@Injectable()
+export class BackendExtService {
+  private readonly logger = new Logger(BackendExtService.name);
+  private tokenCache = new Map<string, OAuthTokenResponseDto>();
+
+  constructor(
+    @InjectRepository(BackendExt)
+    private readonly backendExtRepository: Repository<BackendExt>,
+    private readonly httpService: HttpService,
+  ) {}
+
+  // Configuration CRUD Operations
+  async create(createBackendExtDto: CreateBackendExtDto): Promise<BackendExt> {
+    try {
+      const backendExt = this.backendExtRepository.create(createBackendExtDto);
+      const savedConfig = await this.backendExtRepository.save(backendExt);
+      
+      this.logger.log(`✅ Created backend ext configuration: ${savedConfig.name}`);
+      return savedConfig;
+    } catch (error) {
+      this.logger.error(`❌ Failed to create backend ext configuration: ${error.message}`);
+      throw new HttpException(
+        'Failed to create backend ext configuration',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async findAll(): Promise<BackendExt[]> {
+    try {
+      return await this.backendExtRepository.find({
+        order: { created_at: 'DESC' },
+      });
+    } catch (error) {
+      this.logger.error(`❌ Failed to fetch backend ext configurations: ${error.message}`);
+      throw new HttpException(
+        'Failed to fetch backend ext configurations',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async findOne(id: string): Promise<BackendExt> {
+    try {
+      const config = await this.backendExtRepository.findOne({
+        where: { id },
+      });
+
+      if (!config) {
+        throw new NotFoundException(`Backend ext configuration with ID ${id} not found`);
+      }
+
+      return config;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      
+      this.logger.error(`❌ Failed to fetch backend ext configuration: ${error.message}`);
+      throw new HttpException(
+        'Failed to fetch backend ext configuration',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async update(id: string, updateBackendExtDto: UpdateBackendExtDto): Promise<BackendExt> {
+    try {
+      const config = await this.findOne(id);
+      
+      Object.assign(config, updateBackendExtDto);
+      const updatedConfig = await this.backendExtRepository.save(config);
+      
+      // Clear token cache for this config when updated
+      this.clearTokenCacheForConfig(id);
+      
+      this.logger.log(`✅ Updated backend ext configuration: ${updatedConfig.name}`);
+      return updatedConfig;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      
+      this.logger.error(`❌ Failed to update backend ext configuration: ${error.message}`);
+      throw new HttpException(
+        'Failed to update backend ext configuration',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async remove(id: string): Promise<void> {
+    try {
+      const config = await this.findOne(id);
+      await this.backendExtRepository.remove(config);
+      
+      // Clear token cache for this config when removed
+      this.clearTokenCacheForConfig(id);
+      
+      this.logger.log(`✅ Removed backend ext configuration: ${config.name}`);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      
+      this.logger.error(`❌ Failed to remove backend ext configuration: ${error.message}`);
+      throw new HttpException(
+        'Failed to remove backend ext configuration',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // OAuth Token Operations
+  async getOAuthToken(tokenRequest: OAuthTokenRequestDto): Promise<OAuthTokenResponseDto> {
+    try {
+      this.logger.log(`🔐 Requesting OAuth token for config: ${tokenRequest.config_id}`);
+
+      // Get configuration
+      const config = await this.findOne(tokenRequest.config_id);
+      
+      if (!config.is_active) {
+        throw new HttpException(
+          'Backend configuration is not active',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Create Base64 encoded authorization header
+      const credentials = `${config.client_id}:${config.client_secret}`;
+      const base64Credentials = Buffer.from(credentials).toString('base64');
+
+      // Use token_url if provided, otherwise fallback to base_url/oauth/token
+      const tokenUrl = config.token_url || `${config.base_url}/oauth/token`;
+
+      // Prepare request payload
+      const payload = {
+        scope: tokenRequest.scope || config.default_scope || 'customer.internal.read customer.internal.create',
+      };
+
+      // Prepare headers
+      const headers = {
+        'authorization': `Basic ${base64Credentials}`,
+        'Content-Type': 'application/json',
+        ...config.additional_headers,
+      };
+
+      // Make OAuth request
+      const response = await firstValueFrom(
+        this.httpService.post(tokenUrl, payload, { headers }),
+      );
+
+      const tokenData: OAuthTokenResponseDto = response.data;
+
+      // Add expiry timestamp for cache management
+      if (tokenData.expires_in) {
+        tokenData.expires_at = Date.now() + (tokenData.expires_in * 1000);
+      }
+
+      // Cache token with config_id as key
+      const cacheKey = `${tokenRequest.config_id}:${tokenRequest.scope || config.default_scope || 'default'}`;
+      this.tokenCache.set(cacheKey, tokenData);
+
+      this.logger.log(`✅ OAuth token obtained successfully for config: ${tokenRequest.config_id}`);
+      
+      return tokenData;
+
+    } catch (error) {
+      this.logger.error(`❌ Failed to get OAuth token: ${error.message}`, error.stack);
+      
+      if (error.response) {
+        throw new HttpException(
+          {
+            message: 'Failed to obtain OAuth token',
+            error: error.response.data,
+            statusCode: error.response.status,
+          },
+          error.response.status,
+        );
+      }
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          message: 'Failed to obtain OAuth token',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async getValidToken(configId: string, scope?: string): Promise<string> {
+    const config = await this.findOne(configId);
+    const cacheKey = `${configId}:${scope || config.default_scope || 'default'}`;
+    const cachedToken = this.tokenCache.get(cacheKey);
+
+    // Check if token exists and is not expired
+    if (cachedToken && cachedToken.expires_at && cachedToken.expires_at > Date.now()) {
+      this.logger.log(`🔄 Using cached token for config: ${configId}`);
+      return cachedToken.access_token;
+    }
+
+    // Request new token
+    this.logger.log(`🆕 Requesting new token for config: ${configId}`);
+    const tokenRequest: OAuthTokenRequestDto = { config_id: configId, scope };
+    const newToken = await this.getOAuthToken(tokenRequest);
+    return newToken.access_token;
+  }
+
+  // External API Request Operations
+  async makeAuthenticatedRequest(apiRequest: ExternalApiRequestDto): Promise<any> {
+    try {
+      this.logger.log(`🌐 Making ${apiRequest.method} request to: ${apiRequest.url} for config: ${apiRequest.config_id}`);
+
+      // Get configuration
+      const config = await this.findOne(apiRequest.config_id);
+      
+      if (!config.is_active) {
+        throw new HttpException(
+          'Backend configuration is not active',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Get valid access token
+      const accessToken = await this.getValidToken(apiRequest.config_id, apiRequest.scope);
+
+      const fullUrl = apiRequest.url.startsWith('http') 
+        ? apiRequest.url 
+        : `${config.base_url}${apiRequest.url}`;
+
+      // Prepare headers
+      const headers = {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        ...config.additional_headers,
+        ...apiRequest.headers,
+      };
+
+      // Make API request based on method
+      let response;
+      
+      switch (apiRequest.method.toUpperCase()) {
+        case 'GET':
+          response = await firstValueFrom(
+            this.httpService.get(fullUrl, {
+              headers,
+              params: apiRequest.params,
+            }),
+          );
+          break;
+
+        case 'POST':
+          response = await firstValueFrom(
+            this.httpService.post(fullUrl, apiRequest.data, {
+              headers,
+              params: apiRequest.params,
+            }),
+          );
+          break;
+
+        case 'PUT':
+          response = await firstValueFrom(
+            this.httpService.put(fullUrl, apiRequest.data, {
+              headers,
+              params: apiRequest.params,
+            }),
+          );
+          break;
+
+        case 'DELETE':
+          response = await firstValueFrom(
+            this.httpService.delete(fullUrl, {
+              headers,
+              params: apiRequest.params,
+            }),
+          );
+          break;
+
+        case 'PATCH':
+          response = await firstValueFrom(
+            this.httpService.patch(fullUrl, apiRequest.data, {
+              headers,
+              params: apiRequest.params,
+            }),
+          );
+          break;
+
+        default:
+          throw new HttpException(
+            `Unsupported HTTP method: ${apiRequest.method}`,
+            HttpStatus.BAD_REQUEST,
+          );
+      }
+
+      this.logger.log(`✅ API request successful: ${apiRequest.method} ${apiRequest.url}`);
+      
+      return {
+        success: true,
+        data: response.data,
+        status: response.status,
+        headers: response.headers,
+      };
+
+    } catch (error) {
+      this.logger.error(`❌ API request failed: ${error.message}`, error.stack);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      if (error.response) {
+        return {
+          success: false,
+          error: {
+            message: error.message,
+            status: error.response.status,
+            data: error.response.data,
+          },
+        };
+      }
+
+      throw new HttpException(
+        {
+          message: 'External API request failed',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Cache Management
+  clearTokenCacheForConfig(configId: string): void {
+    const keysToDelete: string[] = [];
+    for (const key of this.tokenCache.keys()) {
+      if (key.startsWith(`${configId}:`)) {
+        keysToDelete.push(key);
+      }
+    }
+    
+    keysToDelete.forEach(key => this.tokenCache.delete(key));
+    this.logger.log(`🗑️ Token cache cleared for config: ${configId}`);
+  }
+
+  clearAllTokenCache(): void {
+    this.tokenCache.clear();
+    this.logger.log(`🗑️ All token cache cleared`);
+  }
+
+  getCacheStatus(): Array<{ configId: string; scope: string; expiresAt: number; isExpired: boolean }> {
+    const status: Array<{ configId: string; scope: string; expiresAt: number; isExpired: boolean }> = [];
+    
+    for (const [key, token] of this.tokenCache.entries()) {
+      const [configId, scope] = key.split(':');
+      status.push({
+        configId,
+        scope: scope || 'default',
+        expiresAt: token.expires_at || 0,
+        isExpired: token.expires_at ? token.expires_at <= Date.now() : true,
+      });
+    }
+
+    return status;
+  }
+
+  async getActiveConfigs(): Promise<BackendExt[]> {
+    try {
+      return await this.backendExtRepository.find({
+        where: { is_active: true },
+        order: { created_at: 'DESC' },
+      });
+    } catch (error) {
+      this.logger.error(`❌ Failed to fetch active backend ext configurations: ${error.message}`);
+      throw new HttpException(
+        'Failed to fetch active backend ext configurations',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Simplified API Request - menggunakan config method dan url sebagai default
+  async makeSimplifiedApiRequest(request: {
+    config_id: string;
+    data?: any;
+    headers?: Record<string, string>;
+    params?: Record<string, any>;
+    scope?: string;
+    method?: string;
+    url?: string;
+  }): Promise<any> {
+    try {
+      // Get configuration
+      const config = await this.findOne(request.config_id);
+      
+      // Use method and url from config as default, allow override
+      const method = (request.method || config.method || 'GET').toUpperCase();
+      const url = request.url || config.url;
+      
+      if (!url) {
+        throw new HttpException(
+          'URL is required either in config or request parameter',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Get OAuth token (with cache or fresh)
+      const scope = request.scope || config.default_scope;
+      const token = await this.getOrRefreshToken(config, scope);
+
+      // Prepare full URL
+      const fullUrl = `${config.base_url}${url}`;
+
+      // Prepare headers
+      const headers = {
+        'Authorization': `Bearer ${token.access_token}`,
+        'Content-Type': 'application/json',
+        ...config.additional_headers,
+        ...request.headers,
+      };
+
+      this.logger.log(`🌐 Making ${method} request to: ${url} for config: ${request.config_id}`);
+
+      // Make API request based on method
+      let response;
+      const axiosConfig = {
+        headers,
+        params: request.params,
+      };
+
+      switch (method) {
+        case 'GET':
+          response = await firstValueFrom(
+            this.httpService.get(fullUrl, axiosConfig),
+          );
+          break;
+        case 'POST':
+          response = await firstValueFrom(
+            this.httpService.post(fullUrl, request.data, axiosConfig),
+          );
+          break;
+        case 'PUT':
+          response = await firstValueFrom(
+            this.httpService.put(fullUrl, request.data, axiosConfig),
+          );
+          break;
+        case 'PATCH':
+          response = await firstValueFrom(
+            this.httpService.patch(fullUrl, request.data, axiosConfig),
+          );
+          break;
+        case 'DELETE':
+          response = await firstValueFrom(
+            this.httpService.delete(fullUrl, axiosConfig),
+          );
+          break;
+        default:
+          throw new HttpException(
+            `Unsupported HTTP method: ${method}`,
+            HttpStatus.BAD_REQUEST,
+          );
+      }
+
+      this.logger.log(`✅ API request successful for config: ${request.config_id}`);
+      return response.data;
+
+    } catch (error) {
+      this.logger.error(`❌ API request failed: ${error.message}`, error.stack);
+      
+      if (error.response) {
+        // Return structured error response
+        return {
+          success: false,
+          error: {
+            message: error.message,
+            status: error.response.status,
+            data: error.response.data,
+          },
+        };
+      }
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          message: 'API request failed',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Helper method untuk get or refresh token dengan cache
+  private async getOrRefreshToken(config: BackendExt, scope?: string): Promise<OAuthTokenResponseDto> {
+    const cacheKey = `${config.id}:${scope || 'default'}`;
+    const cachedToken = this.tokenCache.get(cacheKey);
+
+    // Check if cached token is still valid
+    if (cachedToken && cachedToken.expires_at && cachedToken.expires_at > Date.now()) {
+      this.logger.log(`🔄 Using cached token for config: ${config.id}`);
+      return cachedToken;
+    }
+
+    // Get fresh token
+    this.logger.log(`🔑 Getting fresh token for config: ${config.id}`);
+    const tokenRequest: OAuthTokenRequestDto = {
+      config_id: config.id,
+      grant_type: 'client_credentials',
+      scope: scope || config.default_scope,
+    };
+
+    return await this.getOAuthToken(tokenRequest);
+  }
+}
