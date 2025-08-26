@@ -27,6 +27,15 @@ export class AccountPIC {
   @Column()
   email: string;
 
+  @Column({ nullable: true })
+  no_ktp: string;
+
+  @Column({ nullable: true })
+  no_npwp: string;
+
+  @Column({ default: false, name: 'is_owner' })
+  is_owner: boolean;
+
   @Column({ default: true })
   is_active: boolean;
 

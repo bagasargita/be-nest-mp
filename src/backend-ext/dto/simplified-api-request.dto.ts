@@ -66,4 +66,22 @@ export class SimplifiedApiRequestDto {
   @IsString()
   @IsOptional()
   url?: string;
+
+  @ApiProperty({
+    description: 'User ID for logging purposes',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  user_id?: string;
+
+  @ApiProperty({
+    description: 'Account ID for logging purposes',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  account_id?: string;
 }

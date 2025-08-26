@@ -265,11 +265,15 @@ export class AccountService {
     return savedAccount;
   }
 
-  async remove(id: string): Promise<void> {
-    const account = await this.repo.delete({ id });
+  async remove(id: string, username: string): Promise<void> {
+    const account = await this.repo.findOne({ where: { id } });
     if (!account) {
-      throw new Error(`Account with id ${id} not found`);
+      throw new NotFoundException(`Account with id ${id} not found`);
     }
+    account.is_active = false;
+    account.updated_by = username;
+    account.updated_at = new Date();
+    await this.repo.save(account);
   }
 
   async findDescendants(id: string) {

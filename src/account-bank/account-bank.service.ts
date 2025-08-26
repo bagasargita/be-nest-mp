@@ -67,10 +67,14 @@ export class AccountBankService {
     return this.repo.save(accountBank);
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.repo.delete({ id });
-    if (result.affected === 0) {
+  async remove(id: string, username:string): Promise<void> {
+    const accountBank = await this.repo.findOne({ where: { id } });
+    if (!accountBank) {
       throw new Error(`Account Bank with id ${id} not found`);
     }
+    accountBank.is_active = false;
+    accountBank.updated_by = username;
+    accountBank.updated_at = new Date();
+    await this.repo.save(accountBank);
   }
 }

@@ -42,10 +42,14 @@ export class AccountAddressController {
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     if (!id) {
       throw new Error('ID parameter is required');
     }
-    return this.service.remove(id);
+    const username = req.user.username;
+    if (!username) {
+      throw new Error('Username not found in request');
+    }
+    return this.service.remove(id, username);
   }
 }

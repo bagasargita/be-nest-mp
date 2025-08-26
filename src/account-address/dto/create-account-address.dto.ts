@@ -97,6 +97,10 @@ export class CreateAccountAddressDto {
   phone_no?: string;
 
   @IsOptional()
+  @IsString()
+  website?: string;
+
+  @IsOptional()
   @IsBoolean()
   is_active?: boolean;
 }

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { BackendExt } from './entities/backend-ext.entity';
+import { BackendExtLog } from './entities/backend-ext-log.entity';
 import { CreateBackendExtDto } from './dto/create-backend-ext.dto';
 import { UpdateBackendExtDto } from './dto/update-backend-ext.dto';
 import { OAuthTokenRequestDto, OAuthTokenResponseDto, ExternalApiRequestDto } from './dto/oauth-token.dto';
@@ -16,8 +17,97 @@ export class BackendExtService {
   constructor(
     @InjectRepository(BackendExt)
     private readonly backendExtRepository: Repository<BackendExt>,
+    @InjectRepository(BackendExtLog)
+    private readonly backendExtLogRepository: Repository<BackendExtLog>,
     private readonly httpService: HttpService,
   ) {}
+
+  // Logging Operations
+  private async logTransaction(params: {
+    configId: string;
+    method: string;
+    endpoint: string;
+    requestBody?: any;
+    requestHeaders?: any;
+    responseStatus?: number;
+    responseBody?: any;
+    responseHeaders?: any;
+    executionTimeMs?: number;
+    errorMessage?: string;
+    userId?: string;
+    accountId?: string;
+  }): Promise<BackendExtLog | null> {
+    try {
+      const log = this.backendExtLogRepository.create({
+        configId: params.configId,
+        method: params.method.toUpperCase(),
+        endpoint: params.endpoint,
+        requestBody: params.requestBody,
+        requestHeaders: params.requestHeaders,
+        responseStatus: params.responseStatus,
+        responseBody: params.responseBody,
+        responseHeaders: params.responseHeaders,
+        executionTimeMs: params.executionTimeMs,
+        errorMessage: params.errorMessage,
+        userId: params.userId,
+        accountId: params.accountId,
+      });
+
+      return await this.backendExtLogRepository.save(log);
+    } catch (error) {
+      this.logger.error(`❌ Failed to log transaction: ${error.message}`);
+      // Don't throw error to avoid breaking the main flow
+      return null;
+    }
+  }
+
+  // Get logs for a specific config
+  async getTransactionLogs(configId: string, options?: {
+    limit?: number;
+    offset?: number;
+    startDate?: Date;
+    endDate?: Date;
+    status?: number;
+  }): Promise<{ logs: BackendExtLog[]; total: number }> {
+    try {
+      const queryBuilder = this.backendExtLogRepository
+        .createQueryBuilder('log')
+        .where('log.configId = :configId', { configId })
+        .orderBy('log.createdAt', 'DESC');
+
+      if (options?.startDate) {
+        queryBuilder.andWhere('log.createdAt >= :startDate', { startDate: options.startDate });
+      }
+
+      if (options?.endDate) {
+        queryBuilder.andWhere('log.createdAt <= :endDate', { endDate: options.endDate });
+      }
+
+      if (options?.status) {
+        queryBuilder.andWhere('log.responseStatus = :status', { status: options.status });
+      }
+
+      const total = await queryBuilder.getCount();
+
+      if (options?.limit) {
+        queryBuilder.limit(options.limit);
+      }
+
+      if (options?.offset) {
+        queryBuilder.offset(options.offset);
+      }
+
+      const logs = await queryBuilder.getMany();
+
+      return { logs, total };
+    } catch (error) {
+      this.logger.error(`❌ Failed to fetch transaction logs: ${error.message}`);
+      throw new HttpException(
+        'Failed to fetch transaction logs',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   // Configuration CRUD Operations
   async create(createBackendExtDto: CreateBackendExtDto): Promise<BackendExt> {
@@ -222,7 +312,13 @@ export class BackendExtService {
   }
 
   // External API Request Operations
-  async makeAuthenticatedRequest(apiRequest: ExternalApiRequestDto): Promise<any> {
+  async makeAuthenticatedRequest(apiRequest: ExternalApiRequestDto, userId?: string, accountId?: string): Promise<any> {
+    const startTime = Date.now();
+    let responseStatus: number | undefined;
+    let responseData: any;
+    let responseHeaders: any;
+    let errorMessage: string | undefined;
+
     try {
       this.logger.log(`🌐 Making ${apiRequest.method} request to: ${apiRequest.url} for config: ${apiRequest.config_id}`);
 
@@ -307,7 +403,26 @@ export class BackendExtService {
           );
       }
 
+      responseStatus = response.status;
+      responseData = response.data;
+      responseHeaders = response.headers;
+      
       this.logger.log(`✅ API request successful: ${apiRequest.method} ${apiRequest.url}`);
+      
+      // Log successful transaction
+      await this.logTransaction({
+        configId: apiRequest.config_id,
+        method: apiRequest.method,
+        endpoint: apiRequest.url,
+        requestBody: apiRequest.data,
+        requestHeaders: headers,
+        responseStatus,
+        responseBody: responseData,
+        responseHeaders,
+        executionTimeMs: Date.now() - startTime,
+        userId,
+        accountId,
+      });
       
       return {
         success: true,
@@ -318,6 +433,30 @@ export class BackendExtService {
 
     } catch (error) {
       this.logger.error(`❌ API request failed: ${error.message}`, error.stack);
+
+      // Capture error details for logging
+      if (error.response) {
+        responseStatus = error.response.status;
+        responseData = error.response.data;
+        responseHeaders = error.response.headers;
+      }
+      errorMessage = error.message;
+
+      // Log failed transaction
+      await this.logTransaction({
+        configId: apiRequest.config_id,
+        method: apiRequest.method,
+        endpoint: apiRequest.url,
+        requestBody: apiRequest.data,
+        requestHeaders: apiRequest.headers,
+        responseStatus,
+        responseBody: responseData,
+        responseHeaders,
+        executionTimeMs: Date.now() - startTime,
+        errorMessage,
+        userId,
+        accountId,
+      });
 
       if (error instanceof HttpException) {
         throw error;
@@ -402,7 +541,15 @@ export class BackendExtService {
     scope?: string;
     method?: string;
     url?: string;
+    user_id?: string;
+    account_id?: string;
   }): Promise<any> {
+    const startTime = Date.now();
+    let responseStatus: number | undefined;
+    let responseData: any;
+    let responseHeaders: any;
+    let errorMessage: string | undefined;
+
     try {
       // Get configuration
       const config = await this.findOne(request.config_id);
@@ -475,11 +622,55 @@ export class BackendExtService {
           );
       }
 
+      responseStatus = response.status;
+      responseData = response.data;
+      responseHeaders = response.headers;
+
       this.logger.log(`✅ API request successful for config: ${request.config_id}`);
+      
+      // Log successful transaction
+      await this.logTransaction({
+        configId: request.config_id,
+        method: method,
+        endpoint: url,
+        requestBody: request.data,
+        requestHeaders: headers,
+        responseStatus,
+        responseBody: responseData,
+        responseHeaders,
+        executionTimeMs: Date.now() - startTime,
+        userId: request.user_id,
+        accountId: request.account_id,
+      });
+
       return response.data;
 
     } catch (error) {
       this.logger.error(`❌ API request failed: ${error.message}`, error.stack);
+      
+      // Capture error details for logging
+      if (error.response) {
+        responseStatus = error.response.status;
+        responseData = error.response.data;
+        responseHeaders = error.response.headers;
+      }
+      errorMessage = error.message;
+
+      // Log failed transaction
+      await this.logTransaction({
+        configId: request.config_id,
+        method: request.method || 'GET',
+        endpoint: request.url || '',
+        requestBody: request.data,
+        requestHeaders: request.headers,
+        responseStatus,
+        responseBody: responseData,
+        responseHeaders,
+        executionTimeMs: Date.now() - startTime,
+        errorMessage,
+        userId: request.user_id,
+        accountId: request.account_id,
+      });
       
       if (error.response) {
         // Return structured error response

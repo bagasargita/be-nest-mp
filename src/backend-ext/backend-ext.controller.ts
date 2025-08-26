@@ -8,8 +8,9 @@ import {
   Delete,
   UseGuards,
   ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { BackendExtService } from './backend-ext.service';
 import { CreateBackendExtDto } from './dto/create-backend-ext.dto';
 import { UpdateBackendExtDto } from './dto/update-backend-ext.dto';
@@ -284,6 +285,46 @@ export class BackendExtController {
     return {
       success: true,
       message: 'All token cache cleared successfully',
+    };
+  }
+
+  // Transaction Logs
+  @Get('logs/:configId')
+  @ApiOperation({ 
+    summary: 'Get Transaction Logs',
+    description: 'Retrieve transaction logs for a specific backend external configuration'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Transaction logs retrieved successfully'
+  })
+  @ApiQuery({ name: 'limit', required: false, description: 'Number of logs to retrieve (default: 50)' })
+  @ApiQuery({ name: 'offset', required: false, description: 'Number of logs to skip (default: 0)' })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Start date filter (ISO string)' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'End date filter (ISO string)' })
+  @ApiQuery({ name: 'status', required: false, description: 'HTTP response status filter' })
+  async getTransactionLogs(
+    @Param('configId', ParseUUIDPipe) configId: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
+  ) {
+    const options = {
+      limit: limit ? parseInt(limit) : 50,
+      offset: offset ? parseInt(offset) : 0,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      status: status ? parseInt(status) : undefined,
+    };
+
+    const result = await this.backendExtService.getTransactionLogs(configId, options);
+    
+    return {
+      success: true,
+      message: 'Transaction logs retrieved successfully',
+      data: result,
     };
   }
 

@@ -43,6 +43,9 @@ export class AccountAddress {
   @Column({ length: 20, nullable: true })
   phone_no: string;
 
+  @Column({ nullable: true })
+  website: string;
+
   @Column({ default: true })
   is_active: boolean;
 

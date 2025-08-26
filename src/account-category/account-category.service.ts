@@ -92,10 +92,14 @@ export class AccountCategoryService {
   }
 
   // Hapus kategori
-  async remove(id: string): Promise<void> {
-    const result = await this.repo.delete({ id });
-    if (result.affected === 0) {
+  async remove(id: string, username: string): Promise<void> {
+    const category = await this.repo.findOne({ where: { id } });
+    if (!category) {
       throw new NotFoundException(`AccountCategory with id ${id} not found`);
     }
+    category.is_active = false;
+    category.updated_by = username;
+    category.updated_at = new Date();
+    await this.repo.save(category);
   }
 }

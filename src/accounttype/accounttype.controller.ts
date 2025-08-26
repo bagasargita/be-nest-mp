@@ -47,7 +47,8 @@ export class AccountTypeController {
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.service.remove(id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @Req() request: any) {
+    const username = request.user?.username || 'system';
+    return this.service.remove(id, username);
   }
 }

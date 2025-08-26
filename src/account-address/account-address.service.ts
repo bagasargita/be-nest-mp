@@ -52,19 +52,16 @@ export class AccountAddressService {
       throw new Error(`AccountAddress with id ${id} not found`);
     }
     return this.repo.save(accountAddress);
-    // Uncomment the following lines if you want to use a different approach
-    // await this.repo.update(id, updateData);
-    // const updated = await this.findOne(id);
-    // if (!updated) {
-    //   throw new Error(`AccountAddress with id ${id} not found`);
-    // }
-    // return updated;
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.repo.delete({ id });
-    if (result.affected === 0) {
+  async remove(id: string, username: string): Promise<void> {
+    const accountAddress = await this.repo.findOne({ where: { id } });
+    if (!accountAddress) {
       throw new Error(`Account Address with id ${id} not found`);
     }
+    accountAddress.is_active = false;
+    accountAddress.updated_by = username;
+    accountAddress.updated_at = new Date();
+    await this.repo.save(accountAddress);
   }
 }

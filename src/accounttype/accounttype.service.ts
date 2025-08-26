@@ -50,10 +50,14 @@ export class AccountTypeService {
     return this.repo.save(accountType);
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.repo.delete({ id });
-    if (result.affected === 0) {
+  async remove(id: string, username: string): Promise<void> {
+    const accountType = await this.repo.findOne({ where: { id } });
+    if (!accountType) {
       throw new Error(`Account Type with id ${id} not found`);
     }
+    accountType.is_active = false;
+    accountType.updated_by = username;
+    accountType.updated_at = new Date();
+    await this.repo.save(accountType);
   }
 }

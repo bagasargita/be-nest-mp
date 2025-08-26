@@ -57,6 +57,15 @@ export class CreateAccountPICDto {
   @IsBoolean()
   is_active?: boolean;
 
+  @ApiProperty({
+    description: 'Indicates if the PIC is the owner',
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  is_owner?: boolean;
+
   // @IsString()
   // created_by: string;
 }

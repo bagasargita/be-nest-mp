@@ -167,8 +167,9 @@ export class AccountController {
   }
 
   @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.service.remove(id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    const username = req.user?.username || 'system';
+    return this.service.remove(id, username);
   }
 
   // Endpoint untuk ambil seluruh subtree dari sebuah account
