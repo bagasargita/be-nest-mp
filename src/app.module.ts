@@ -33,6 +33,7 @@ import { CdmProviderModule } from './cdm-provider/cdm-provider.module';
 import { CashLogisticsProviderModule } from './cash-logistics-provider/cash-logistics-provider.module';
 import { PostalcodeModule } from './postalcode/postalcode.module';
 import { BackendExtModule } from './backend-ext/backend-ext.module';
+import { PublishedPackageTierModule } from './published-package-tier/published-package-tier.module';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { BackendExtModule } from './backend-ext/backend-ext.module';
     CashLogisticsProviderModule,
     PostalcodeModule,
     BackendExtModule,
+    PublishedPackageTierModule,
   ],
   providers: [
     {
