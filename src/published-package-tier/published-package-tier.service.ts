@@ -41,7 +41,21 @@ export class PublishedPackageTierService {
       .getOne();
 
     if (overlapping) {
-      throw new BadRequestException('Package tier range overlaps with existing tier');
+      // Format dates properly for error message
+      const formatDate = (date) => {
+        if (date instanceof Date) {
+          return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+        }
+        return date;
+      };
+
+      throw new BadRequestException(
+        `Package tier range overlaps with existing tier: ` +
+        `Value range [${overlapping.min_value} - ${overlapping.max_value}] ` +
+        `overlaps with [${createDto.min_value} - ${createDto.max_value}], ` +
+        `Date range [${formatDate(overlapping.start_date)} - ${formatDate(overlapping.end_date)}] ` +
+        `overlaps with [${formatDate(createDto.start_date)} - ${formatDate(createDto.end_date)}]`
+      );
     }
 
     const publishedPackageTier = this.publishedPackageTierRepository.create({
@@ -60,6 +74,22 @@ export class PublishedPackageTierService {
       where: { is_active: true },
       order: { min_value: 'ASC' },
     });
+  }
+
+  async findAllForDebug(): Promise<any[]> {
+    // Return all active tiers with readable format for debugging
+    const tiers = await this.publishedPackageTierRepository.find({
+      where: { is_active: true },
+      order: { min_value: 'ASC' },
+    });
+    
+    return tiers.map(tier => ({
+      id: tier.id,
+      valueRange: `${tier.min_value} - ${tier.max_value}`,
+      dateRange: `${tier.start_date} - ${tier.end_date}`,
+      amount: tier.amount,
+      percentage: tier.percentage,
+    }));
   }
 
   async findOne(id: string): Promise<PublishedPackageTier> {
@@ -118,7 +148,21 @@ export class PublishedPackageTierService {
       .getOne();
 
     if (overlapping) {
-      throw new BadRequestException('Package tier range overlaps with existing tier');
+      // Format dates properly for error message
+      const formatDate = (date) => {
+        if (date instanceof Date) {
+          return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+        }
+        return date;
+      };
+
+      throw new BadRequestException(
+        `Package tier range overlaps with existing tier: ` +
+        `Value range [${overlapping.min_value} - ${overlapping.max_value}] ` +
+        `overlaps with [${minValue} - ${maxValue}], ` +
+        `Date range [${formatDate(overlapping.start_date)} - ${formatDate(overlapping.end_date)}] ` +
+        `overlaps with [${formatDate(startDate)} - ${formatDate(endDate)}]`
+      );
     }
 
     // Update fields

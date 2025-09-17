@@ -31,6 +31,13 @@ export class PublishedPackageTierController {
     return this.publishedPackageTierService.findAll();
   }
 
+  @Get('debug/all')
+  @ApiOperation({ summary: 'Get all published package tiers with debug info' })
+  @ApiResponse({ status: 200, description: 'Return all published package tiers with readable format' })
+  findAllForDebug() {
+    return this.publishedPackageTierService.findAllForDebug();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a published package tier by ID' })
   @ApiParam({ name: 'id', description: 'Published Package Tier ID' })
