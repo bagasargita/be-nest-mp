@@ -34,6 +34,7 @@ import { CashLogisticsProviderModule } from './cash-logistics-provider/cash-logi
 import { PostalcodeModule } from './postalcode/postalcode.module';
 import { BackendExtModule } from './backend-ext/backend-ext.module';
 import { PublishedPackageTierModule } from './published-package-tier/published-package-tier.module';
+import { MasterPaymentGatewayModule } from './master-payment-gateway/master-payment-gateway.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { PublishedPackageTierModule } from './published-package-tier/published-p
     PostalcodeModule,
     BackendExtModule,
     PublishedPackageTierModule,
+    MasterPaymentGatewayModule,
   ],
   providers: [
     {
