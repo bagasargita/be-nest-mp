@@ -50,4 +50,10 @@ export class AccountPIC {
 
   @Column({ type: 'timestamp', nullable: true })
   updated_at: Date;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  username?: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  uuid_be?: string;
 }

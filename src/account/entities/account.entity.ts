@@ -23,6 +23,12 @@ export class Account {
   @Column({ length: 200, nullable: true })
   brand_name: string;
 
+  @Column({ length: 30, nullable: true })
+  phone_no: string;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  email: string;
+
   @ManyToOne(() => Industry, { nullable: true })
   @JoinColumn({ name: 'industry_id' })
   industry: Industry;
@@ -76,4 +82,7 @@ export class Account {
 
   @Column({ type: 'timestamp', nullable: true })
   updated_at: Date;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  uuid_be?: string;
 }

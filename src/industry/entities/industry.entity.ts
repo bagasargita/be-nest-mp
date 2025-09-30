@@ -5,8 +5,14 @@ export class Industry {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ length: 100 })
+  @Column({ length: 50, nullable: true })
+  code: string;
+
+  @Column({ length: 255 })
   name: string;
+
+  @Column({ type: 'text', nullable: true })
+  description: string;
 
   @Column({ default: true })
   is_active: boolean;

@@ -51,4 +51,7 @@ export class AccountPackageTier {
 
   @UpdateDateColumn()
   updated_at: Date;
+  
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  uuid_be?: string;
 }

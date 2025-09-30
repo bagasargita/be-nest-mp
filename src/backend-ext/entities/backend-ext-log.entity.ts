@@ -10,6 +10,13 @@ import {
 } from 'typeorm';
 import { BackendExt } from './backend-ext.entity';
 
+/**
+ * Backend External API Transaction Log Entity
+ * 
+ * This entity stores ALL external API interactions for complete audit trail.
+ * IMPORTANT: Each API call creates a NEW log record - never updates existing ones.
+ * This ensures we can track all changes and maintain data integrity.
+ */
 @Entity('m_backend_ext_logs')
 @Index(['configId'])
 @Index(['createdAt'])

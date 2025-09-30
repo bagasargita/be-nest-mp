@@ -45,6 +45,15 @@ export class CreateAccountPackageTierDto {
   @IsNotEmpty()
   @IsDateString()
   end_date: string;
+
+  @ApiProperty({ description: 'Active status', required: false, default: true })
+  @IsOptional()
+  is_active?: boolean;
+
+  @ApiProperty({ description: 'UUID from backend system', required: false, nullable: true })
+  @IsOptional()
+  @IsString()
+  uuid_be?: string;
 }
 
 export class UpdateAccountPackageTierDto {
@@ -80,4 +89,13 @@ export class UpdateAccountPackageTierDto {
   @IsOptional()
   @IsDateString()
   end_date?: string;
+
+  @ApiProperty({ description: 'Active status', required: false, default: true })
+  @IsOptional()
+  is_active?: boolean;
+
+  @ApiProperty({ description: 'UUID from backend system', required: false, nullable: true })
+  @IsOptional()
+  @IsString()
+  uuid_be?: string;
 }

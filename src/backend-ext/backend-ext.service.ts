@@ -23,6 +23,11 @@ export class BackendExtService {
   ) {}
 
   // Logging Operations
+  /**
+   * Log external API transaction - ALWAYS creates a NEW record
+   * This ensures complete audit trail and change tracking capability
+   * Never updates existing logs to maintain data integrity
+   */
   private async logTransaction(params: {
     configId: string;
     method: string;
@@ -38,6 +43,8 @@ export class BackendExtService {
     accountId?: string;
   }): Promise<BackendExtLog | null> {
     try {
+      // Always create NEW log entry - never update existing ones
+      // This preserves complete audit trail for all API interactions
       const log = this.backendExtLogRepository.create({
         configId: params.configId,
         method: params.method.toUpperCase(),
@@ -53,7 +60,10 @@ export class BackendExtService {
         accountId: params.accountId,
       });
 
-      return await this.backendExtLogRepository.save(log);
+      const savedLog = await this.backendExtLogRepository.save(log);
+      this.logger.debug(`📝 API transaction logged with ID: ${savedLog.id}`);
+      
+      return savedLog;
     } catch (error) {
       this.logger.error(`❌ Failed to log transaction: ${error.message}`);
       // Don't throw error to avoid breaking the main flow
@@ -61,19 +71,23 @@ export class BackendExtService {
     }
   }
 
-  // Get logs for a specific config
+  // Get logs for a specific config with audit trail capabilities
   async getTransactionLogs(configId: string, options?: {
     limit?: number;
     offset?: number;
     startDate?: Date;
     endDate?: Date;
     status?: number;
+    endpoint?: string;
+    method?: string;
+    userId?: string;
+    accountId?: string;
   }): Promise<{ logs: BackendExtLog[]; total: number }> {
     try {
       const queryBuilder = this.backendExtLogRepository
         .createQueryBuilder('log')
         .where('log.configId = :configId', { configId })
-        .orderBy('log.createdAt', 'DESC');
+        .orderBy('log.createdAt', 'DESC'); // Latest first for audit trail
 
       if (options?.startDate) {
         queryBuilder.andWhere('log.createdAt >= :startDate', { startDate: options.startDate });
@@ -87,6 +101,22 @@ export class BackendExtService {
         queryBuilder.andWhere('log.responseStatus = :status', { status: options.status });
       }
 
+      if (options?.endpoint) {
+        queryBuilder.andWhere('log.endpoint ILIKE :endpoint', { endpoint: `%${options.endpoint}%` });
+      }
+
+      if (options?.method) {
+        queryBuilder.andWhere('log.method = :method', { method: options.method.toUpperCase() });
+      }
+
+      if (options?.userId) {
+        queryBuilder.andWhere('log.userId = :userId', { userId: options.userId });
+      }
+
+      if (options?.accountId) {
+        queryBuilder.andWhere('log.accountId = :accountId', { accountId: options.accountId });
+      }
+
       const total = await queryBuilder.getCount();
 
       if (options?.limit) {
@@ -98,6 +128,8 @@ export class BackendExtService {
       }
 
       const logs = await queryBuilder.getMany();
+      
+      this.logger.debug(`📊 Retrieved ${logs.length} of ${total} transaction logs for config ${configId}`);
 
       return { logs, total };
     } catch (error) {
@@ -106,6 +138,32 @@ export class BackendExtService {
         'Failed to fetch transaction logs',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  /**
+   * Get all logs for a specific endpoint/method combination
+   * Useful for tracking changes and patterns in API usage
+   */
+  async getEndpointHistory(configId: string, endpoint: string, method: string, limit: number = 50): Promise<BackendExtLog[]> {
+    try {
+      const logs = await this.backendExtLogRepository.find({
+        where: {
+          configId,
+          endpoint,
+          method: method.toUpperCase(),
+        },
+        order: {
+          createdAt: 'DESC',
+        },
+        take: limit,
+      });
+
+      this.logger.debug(`📈 Retrieved ${logs.length} history records for ${method} ${endpoint}`);
+      return logs;
+    } catch (error) {
+      this.logger.error(`❌ Failed to fetch endpoint history: ${error.message}`);
+      return [];
     }
   }
 
@@ -409,8 +467,8 @@ export class BackendExtService {
       
       this.logger.log(`✅ API request successful: ${apiRequest.method} ${apiRequest.url}`);
       
-      // Log successful transaction
-      await this.logTransaction({
+      // Log successful transaction - ALWAYS creates new record for audit trail
+      const logResult = await this.logTransaction({
         configId: apiRequest.config_id,
         method: apiRequest.method,
         endpoint: apiRequest.url,
@@ -423,6 +481,10 @@ export class BackendExtService {
         userId,
         accountId,
       });
+      
+      if (logResult) {
+        this.logger.debug(`📝 Transaction logged successfully with ID: ${logResult.id}`);
+      }
       
       return {
         success: true,
@@ -442,8 +504,8 @@ export class BackendExtService {
       }
       errorMessage = error.message;
 
-      // Log failed transaction
-      await this.logTransaction({
+      // Log failed transaction - ALWAYS creates new record for audit trail
+      const logResult = await this.logTransaction({
         configId: apiRequest.config_id,
         method: apiRequest.method,
         endpoint: apiRequest.url,
@@ -457,6 +519,10 @@ export class BackendExtService {
         userId,
         accountId,
       });
+      
+      if (logResult) {
+        this.logger.debug(`📝 Failed transaction logged with ID: ${logResult.id}`);
+      }
 
       if (error instanceof HttpException) {
         throw error;

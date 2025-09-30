@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsDateString, IsOptional, IsBoolean, Min, Max } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsDateString, IsOptional, IsBoolean, Min, Max, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -126,4 +126,12 @@ export class UpdatePublishedPackageTierDto {
   @IsOptional()
   @IsBoolean()
   is_active?: boolean;
+
+  @ApiPropertyOptional({ 
+    description: 'UUID from backend system',
+    example: '123e4567-e89b-12d3-a456-426614174000'
+  })
+  @IsOptional()
+  @IsString()
+  uuid_be?: string;
 }

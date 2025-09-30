@@ -1,4 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { collapseTextChangeRangesAcrossMultipleVersions } from 'typescript';
 
 @Entity('m_published_package_tier')
 export class PublishedPackageTier {
@@ -37,4 +38,7 @@ export class PublishedPackageTier {
 
   @Column('boolean', { default: true })
   is_active: boolean;
+
+  @Column('varchar', { length: 255, nullable: true })
+  uuid_be?: string;
 }
