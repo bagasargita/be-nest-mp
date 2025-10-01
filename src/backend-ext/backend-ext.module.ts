@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
 import { BackendExtService } from './backend-ext.service';
 import { BackendExtController } from './backend-ext.controller';
+import { AuditTrailController } from './audit-trail.controller';
 import { BackendExt } from './entities/backend-ext.entity';
 import { BackendExtLog } from './entities/backend-ext-log.entity';
 
@@ -14,7 +15,7 @@ import { BackendExtLog } from './entities/backend-ext-log.entity';
       maxRedirects: 5,
     }),
   ],
-  controllers: [BackendExtController],
+  controllers: [BackendExtController, AuditTrailController],
   providers: [BackendExtService],
   exports: [BackendExtService],
 })

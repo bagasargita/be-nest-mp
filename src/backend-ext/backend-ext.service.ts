@@ -785,4 +785,50 @@ export class BackendExtService {
 
     return await this.getOAuthToken(tokenRequest);
   }
+
+  // Simple createLog method for direct API calls from frontend
+  async createLog(logData: any): Promise<BackendExtLog> {
+    try {
+      const log = new BackendExtLog();
+      log.configId = logData.config_id || 'direct-api-call';
+      log.method = logData.request_method || 'GET';
+      log.endpoint = logData.request_url || '';
+      
+      // Safely parse JSON strings
+      try {
+        log.requestBody = logData.request_data ? JSON.parse(logData.request_data) : null;
+      } catch {
+        log.requestBody = logData.request_data;
+      }
+      
+      try {
+        log.requestHeaders = logData.request_params ? JSON.parse(logData.request_params) : null;
+      } catch {
+        log.requestHeaders = logData.request_params;
+      }
+      
+      try {
+        log.responseBody = logData.response_data ? JSON.parse(logData.response_data) : null;
+      } catch {
+        log.responseBody = logData.response_data;
+      }
+      
+      if (logData.response_status) {
+        log.responseStatus = logData.response_status;
+      }
+      
+      if (logData.execution_time) {
+        log.executionTimeMs = Math.floor(Date.now() - logData.execution_time);
+      }
+      
+      if (logData.error_message) {
+        log.errorMessage = logData.error_message;
+      }
+
+      return await this.backendExtLogRepository.save(log);
+    } catch (error) {
+      this.logger.error('Failed to create log entry:', error);
+      throw error;
+    }
+  }
 }

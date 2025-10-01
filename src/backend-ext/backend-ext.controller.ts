@@ -383,4 +383,47 @@ export class BackendExtController {
       };
     }
   }
+
+  // Simple Logging Endpoint for Direct API Calls
+  @Post('logs')
+  @ApiOperation({ 
+    summary: 'Log API Call',
+    description: 'Log external API calls for audit trail (from direct machineApi.js calls) - No authentication required'
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'API call logged successfully'
+  })
+  async createLog(@Body() logData: any) {
+    try {
+      // Simple logging endpoint untuk audit trail dari machineApi.js
+      // No authentication required untuk audit logging
+      const logEntry = {
+        config_id: 'direct-api-call', // Identifier for direct API calls
+        request_method: logData.request_method,
+        request_url: logData.request_url,
+        request_data: logData.request_data,
+        request_params: logData.request_params,
+        response_status: logData.response_status,
+        response_data: logData.response_data?.substring(0, 2000), // Limit response data size
+        error_message: logData.error_message,
+        execution_time: logData.execution_time,
+        created_at: new Date(),
+      };
+
+      const savedLog = await this.backendExtService.createLog(logEntry);
+      
+      return {
+        success: true,
+        data: savedLog,
+        message: 'API call logged successfully'
+      };
+    } catch (error) {
+      console.error('Failed to create log:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
 }
