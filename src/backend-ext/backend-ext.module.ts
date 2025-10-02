@@ -6,10 +6,11 @@ import { BackendExtController } from './backend-ext.controller';
 import { AuditTrailController } from './audit-trail.controller';
 import { BackendExt } from './entities/backend-ext.entity';
 import { BackendExtLog } from './entities/backend-ext-log.entity';
+import { AuditTrailLog } from './entities/audit-trail-log.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([BackendExt, BackendExtLog]),
+    TypeOrmModule.forFeature([BackendExt, BackendExtLog, AuditTrailLog]),
     HttpModule.register({
       timeout: 30000, // 30 seconds timeout
       maxRedirects: 5,

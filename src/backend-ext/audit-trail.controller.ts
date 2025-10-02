@@ -96,6 +96,7 @@ export class AuditTrailController {
       console.log('🔐 Service token validation:', {
         received: serviceToken,
         expected: validServiceToken,
+        envToken: process.env.AUDIT_SERVICE_TOKEN,
         match: serviceToken === validServiceToken
       });
       

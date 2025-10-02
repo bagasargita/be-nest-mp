@@ -9,14 +9,17 @@ import {
   UseGuards,
   ParseUUIDPipe,
   Query,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { BackendExtService } from './backend-ext.service';
 import { CreateBackendExtDto } from './dto/create-backend-ext.dto';
+import { CreateAuditTrailLogDto } from './dto/create-audit-trail-log.dto';
 import { UpdateBackendExtDto } from './dto/update-backend-ext.dto';
 import { OAuthTokenRequestDto, OAuthTokenResponseDto, ExternalApiRequestDto } from './dto/oauth-token.dto';
 import { SimplifiedApiRequestDto } from './dto/simplified-api-request.dto';
 import { JwtAuthGuard } from '../infrastructure/guards/auth.guard';
+import { Public } from '../core/decorators/public.decorator';
 
 @ApiTags('Backend External API')
 @Controller('backend-ext')
@@ -420,6 +423,112 @@ export class BackendExtController {
       };
     } catch (error) {
       console.error('Failed to create log:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // ===== AUDIT TRAIL ENDPOINTS =====
+
+  @Post('audit-logs')
+  @Public()
+  @ApiOperation({ 
+    summary: 'Create Audit Trail Log',
+    description: 'Log external API calls for independent audit trail (publicly accessible for internal logging)'
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Audit trail log created successfully'
+  })
+  async createAuditTrailLog(
+    @Body() logData: CreateAuditTrailLogDto,
+    @Request() req: any
+  ) {
+    try {
+      console.log('📝 Received audit trail log request:', {
+        method: logData.method,
+        url: logData.url,
+        hasRequestData: !!logData.request_data,
+        hasResponseData: !!logData.response_data
+      });
+
+      // Get user context from request (if available) - not required since endpoint is public
+      const userId = req.user?.id || req.user?.sub || null;
+      const ipAddress = req.ip || req.connection?.remoteAddress || req.headers['x-forwarded-for'] || 'unknown';
+
+      const savedLog = await this.backendExtService.createAuditTrailLog(logData, userId, ipAddress);
+      
+      return {
+        success: true,
+        data: {
+          id: savedLog.id,
+          method: savedLog.method,
+          url: savedLog.url,
+          status: savedLog.responseStatus,
+          createdAt: savedLog.createdAt
+        },
+        message: 'Audit trail logged successfully'
+      };
+    } catch (error) {
+      console.error('❌ Failed to create audit trail log:', {
+        error: error.message,
+        stack: error.stack,
+        data: logData
+      });
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  @Get('audit-logs')
+  @Public()
+  @ApiOperation({ 
+    summary: 'Get Audit Trail Logs',
+    description: 'Retrieve audit trail logs with filtering options (publicly accessible)'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Audit trail logs retrieved successfully'
+  })
+  async getAuditTrailLogs(
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
+    @Query('method') method?: string,
+    @Query('endpoint') endpoint?: string,
+    @Query('status') status?: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    try {
+      const options = {
+        limit: limit ? Math.min(limit, 100) : 50, // Max 100 records
+        offset: offset || 0,
+        method,
+        endpoint,
+        status,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+      };
+
+      const result = await this.backendExtService.getAuditTrailLogs(options);
+      
+      return {
+        success: true,
+        data: result.logs,
+        pagination: {
+          limit: options.limit,
+          offset: options.offset,
+          total: result.total,
+          hasMore: result.total > (options.offset + options.limit)
+        },
+        message: 'Audit trail logs retrieved successfully'
+      };
+    } catch (error) {
+      console.error('Failed to retrieve audit trail logs:', error);
       return {
         success: false,
         error: error.message

@@ -5,8 +5,10 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { BackendExt } from './entities/backend-ext.entity';
 import { BackendExtLog } from './entities/backend-ext-log.entity';
+import { AuditTrailLog } from './entities/audit-trail-log.entity';
 import { CreateBackendExtDto } from './dto/create-backend-ext.dto';
 import { UpdateBackendExtDto } from './dto/update-backend-ext.dto';
+import { CreateAuditTrailLogDto } from './dto/create-audit-trail-log.dto';
 import { OAuthTokenRequestDto, OAuthTokenResponseDto, ExternalApiRequestDto } from './dto/oauth-token.dto';
 
 @Injectable()
@@ -19,6 +21,8 @@ export class BackendExtService {
     private readonly backendExtRepository: Repository<BackendExt>,
     @InjectRepository(BackendExtLog)
     private readonly backendExtLogRepository: Repository<BackendExtLog>,
+    @InjectRepository(AuditTrailLog)
+    private readonly auditTrailLogRepository: Repository<AuditTrailLog>,
     private readonly httpService: HttpService,
   ) {}
 
@@ -829,6 +833,130 @@ export class BackendExtService {
     } catch (error) {
       this.logger.error('Failed to create log entry:', error);
       throw error;
+    }
+  }
+
+  // ===== AUDIT TRAIL METHODS =====
+  
+  /**
+   * Create independent audit trail log for external API calls
+   * This is separate from backend_ext_logs and doesn't require config_id
+   */
+  async createAuditTrailLog(logData: CreateAuditTrailLogDto, userId?: string, ipAddress?: string): Promise<AuditTrailLog> {
+    try {
+      const auditLog = new AuditTrailLog();
+      
+      // Basic audit information
+      auditLog.appName = logData.app_name || 'merahputih-app';
+      auditLog.featureName = logData.feature_name || 'external-api';
+      auditLog.method = logData.method.toUpperCase();
+      auditLog.url = logData.url;
+      auditLog.endpoint = logData.endpoint || this.extractEndpointFromUrl(logData.url);
+      
+      // Request/Response data
+      auditLog.requestData = logData.request_data;
+      auditLog.requestParams = logData.request_params;
+      auditLog.responseStatus = logData.response_status || null;
+      auditLog.responseData = logData.response_data;
+      auditLog.errorMessage = logData.error_message || null;
+      
+      // Performance and timing
+      auditLog.executionTimeMs = logData.execution_time_ms || null;
+      
+      // User context
+      auditLog.userId = userId || null;
+      auditLog.userAgent = logData.user_agent || null;
+      auditLog.ipAddress = ipAddress || logData.ip_address || null;
+      auditLog.sessionId = logData.session_id || null;
+
+      const savedLog = await this.auditTrailLogRepository.save(auditLog);
+      this.logger.debug(`📝 Audit trail logged with ID: ${savedLog.id} for ${logData.method} ${logData.url}`);
+      
+      return savedLog;
+    } catch (error) {
+      this.logger.error(`❌ Failed to create audit trail log: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get audit trail logs with filtering options
+   */
+  async getAuditTrailLogs(options?: {
+    limit?: number;
+    offset?: number;
+    startDate?: Date;
+    endDate?: Date;
+    method?: string;
+    endpoint?: string;
+    status?: number;
+    userId?: string;
+    appName?: string;
+  }): Promise<{ logs: AuditTrailLog[]; total: number }> {
+    try {
+      const queryBuilder = this.auditTrailLogRepository
+        .createQueryBuilder('audit')
+        .orderBy('audit.createdAt', 'DESC'); // Latest first
+
+      // Apply filters
+      if (options?.startDate) {
+        queryBuilder.andWhere('audit.createdAt >= :startDate', { startDate: options.startDate });
+      }
+      if (options?.endDate) {
+        queryBuilder.andWhere('audit.createdAt <= :endDate', { endDate: options.endDate });
+      }
+      if (options?.method) {
+        queryBuilder.andWhere('audit.method = :method', { method: options.method.toUpperCase() });
+      }
+      if (options?.endpoint) {
+        queryBuilder.andWhere('audit.endpoint LIKE :endpoint', { endpoint: `%${options.endpoint}%` });
+      }
+      if (options?.status) {
+        queryBuilder.andWhere('audit.responseStatus = :status', { status: options.status });
+      }
+      if (options?.userId) {
+        queryBuilder.andWhere('audit.userId = :userId', { userId: options.userId });
+      }
+      if (options?.appName) {
+        queryBuilder.andWhere('audit.appName = :appName', { appName: options.appName });
+      }
+
+      // Get total count
+      const total = await queryBuilder.getCount();
+
+      // Apply pagination
+      if (options?.limit) {
+        queryBuilder.limit(options.limit);
+      }
+      if (options?.offset) {
+        queryBuilder.offset(options.offset);
+      }
+
+      const logs = await queryBuilder.getMany();
+
+      return { logs, total };
+    } catch (error) {
+      this.logger.error(`❌ Failed to retrieve audit trail logs: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Extract endpoint path from full URL
+   */
+  private extractEndpointFromUrl(url: string): string {
+    try {
+      // Handle relative URLs (proxy URLs)
+      if (url.startsWith('/')) {
+        return url;
+      }
+      
+      // Handle full URLs
+      const urlObj = new URL(url);
+      return urlObj.pathname + (urlObj.search || '');
+    } catch (error) {
+      // If URL parsing fails, return the original url
+      return url;
     }
   }
 }
