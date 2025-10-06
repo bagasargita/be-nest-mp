@@ -15,8 +15,8 @@ export class PublishedPackageTier {
   @Column('decimal', { precision: 15, scale: 2 })
   amount: number;
 
-  @Column('decimal', { precision: 5, scale: 2, nullable: true })
-  percentage?: number;
+  @Column('boolean', { default: false })
+  percentage: boolean;
 
   @Column('timestamp')
   start_date: Date;

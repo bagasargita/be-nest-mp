@@ -55,6 +55,24 @@ export class PublishedPackageTierController {
     return this.publishedPackageTierService.update(id, updateDto, username);
   }
 
+  @Patch(':id/uuid-be')
+  @ApiOperation({ summary: 'Update only uuid_be field for sync purposes' })
+  @ApiParam({ name: 'id', description: 'Published Package Tier ID' })
+  @ApiBody({ 
+    schema: {
+      type: 'object',
+      properties: {
+        uuid_be: { type: 'string', description: 'UUID from external backend system' }
+      },
+      required: ['uuid_be']
+    }
+  })
+  @ApiResponse({ status: 200, description: 'UUID_BE updated successfully' })
+  updateUuidBe(@Param('id', ParseUUIDPipe) id: string, @Body() body: { uuid_be: string }, @Request() req) {
+    const username = req.user?.username || 'system';
+    return this.publishedPackageTierService.updateUuidBe(id, body.uuid_be, username);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a published package tier' })
   @ApiParam({ name: 'id', description: 'Published Package Tier ID' })

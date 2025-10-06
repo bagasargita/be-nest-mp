@@ -103,4 +103,8 @@ export class CreateAccountAddressDto {
   @IsOptional()
   @IsBoolean()
   is_active?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  is_primary?: boolean;
 }

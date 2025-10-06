@@ -59,14 +59,18 @@ export class PublishedPackageTierService {
     }
 
     const publishedPackageTier = this.publishedPackageTierRepository.create({
-      ...createDto,
+      min_value: createDto.min_value,
+      max_value: createDto.max_value,
+      amount: createDto.amount,
+      percentage: createDto.percentage,
       start_date: startDate,
       end_date: endDate,
       created_by: username,
       is_active: true,
-    });
+    } as any);
 
-    return await this.publishedPackageTierRepository.save(publishedPackageTier);
+    const saved = await this.publishedPackageTierRepository.save(publishedPackageTier);
+    return Array.isArray(saved) ? saved[0] : saved;
   }
 
   async findAll(): Promise<PublishedPackageTier[]> {
@@ -264,13 +268,14 @@ export class PublishedPackageTierService {
           end_date: convertDateFormat(endDateStr),
         };
 
-        // Optional percentage - allow 0 value
+        // Optional percentage - boolean value
         const percentageIndex = headers.indexOf('percentage');
         if (percentageIndex >= 0 && values[percentageIndex] !== '' && values[percentageIndex] !== undefined) {
-          const percentageValue = parseFloat(values[percentageIndex]);
-          if (!isNaN(percentageValue)) {
-            tierData.percentage = percentageValue;
-          }
+          const percentageValue = values[percentageIndex].toString().toLowerCase();
+          tierData.percentage = percentageValue === 'true' || percentageValue === '1' || percentageValue === 'yes';
+        } else {
+          // Default to false if not provided
+          tierData.percentage = false;
         }
 
         console.log('Tier data to create:', tierData);
@@ -285,5 +290,19 @@ export class PublishedPackageTierService {
 
     console.log('Upload results:', results);
     return results;
+  }
+
+  async updateUuidBe(id: string, uuidBe: string, username: string): Promise<PublishedPackageTier> {
+    const publishedPackageTier = await this.findOne(id);
+
+    // Direct update without business logic validation
+    await this.publishedPackageTierRepository.update(id, {
+      uuid_be: uuidBe,
+      updated_by: username,
+      updated_at: new Date(),
+    });
+
+    // Return updated entity
+    return this.findOne(id);
   }
 }

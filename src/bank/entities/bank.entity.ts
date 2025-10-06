@@ -25,4 +25,7 @@ export class Bank {
 
   @Column({ type: 'timestamp', nullable: true })
   updated_at: Date;
+
+  @Column({ length: 255, nullable: true })
+  uuid_be: string;
 }

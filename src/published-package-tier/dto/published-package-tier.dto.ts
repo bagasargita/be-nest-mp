@@ -34,15 +34,13 @@ export class CreatePublishedPackageTierDto {
   amount: number;
 
   @ApiPropertyOptional({ 
-    description: 'Percentage value (0-100)',
-    example: 2.5
+    description: 'Whether this tier uses percentage calculation',
+    example: true
   })
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  @Type(() => Number)
-  percentage?: number;
+  @IsBoolean()
+  @Type(() => Boolean)
+  percentage?: boolean;
 
   @ApiProperty({ 
     description: 'Start date for this tier validity',
@@ -93,15 +91,12 @@ export class UpdatePublishedPackageTierDto {
   amount?: number;
 
   @ApiPropertyOptional({ 
-    description: 'Percentage value (0-100)',
-    example: 2.5
+    description: 'True if amount is percentage based, false if fixed amount',
+    example: true
   })
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  @Type(() => Number)
-  percentage?: number;
+  @IsBoolean()
+  percentage?: boolean;
 
   @ApiPropertyOptional({ 
     description: 'Start date for this tier validity',

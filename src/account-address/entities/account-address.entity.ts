@@ -60,4 +60,7 @@ export class AccountAddress {
 
   @Column({ type: 'timestamp', nullable: true })
   updated_at: Date;
+
+  @Column({ type: 'boolean', default: false })
+  is_primary: boolean;
 }

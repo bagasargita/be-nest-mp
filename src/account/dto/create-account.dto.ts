@@ -87,6 +87,46 @@ export class CreateAccountDto {
   @IsBoolean()
   is_active?: boolean;
 
+  @IsOptional()
+  @IsBoolean()
+  uuid_be?: string;
+
+  @ApiProperty({
+    description: 'Phone number of the account',
+    example: '+621234567890',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  phone_no?: string;
+
+  @ApiProperty({
+    description: 'Email address of the account',
+    example: 'info@techinnovations.com',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @ApiProperty({
+    description: 'KTP number of the account owner (if individual)',
+    example: '1234567890123456',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  no_ktp?: string;
+
+  @ApiProperty({
+    description: 'NPWP number of the account owner (if individual)',
+    example: '12.345.678.9-012.000',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  no_npwp?: string;
+
   // Referral fields
   @ApiProperty({
     description: 'Array of account IDs that referred this account',

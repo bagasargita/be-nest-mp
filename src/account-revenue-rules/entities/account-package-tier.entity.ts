@@ -54,4 +54,7 @@ export class AccountPackageTier {
   
   @Column({ type: 'varchar', length: 255, nullable: true })
   uuid_be?: string;
+
+  @Column({ type: 'boolean', default: false })
+  percentage?: boolean;
 }

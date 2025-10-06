@@ -55,6 +55,16 @@ export class AccountCsvRowDto {
   @IsBoolean()
   @ApiProperty({ description: 'Active status', example: true, required: false })
   is_active?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ description: 'No KTP', example: '000092000413', required: false })
+  no_ktp?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ description: 'No NPWP', example: '00009200413', required: false })
+  no_npwp?: string;
 }
 
 export class MassUploadResultDto {
