@@ -47,9 +47,9 @@ export class CreateAccountPICDto {
   @ApiProperty({
     description: 'Email address of the PIC',
     example: 'example@example.com',
-    required: false,
+    required: true,
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
   email: string;
 
@@ -66,6 +66,39 @@ export class CreateAccountPICDto {
   @IsBoolean()
   is_owner?: boolean;
 
-  // @IsString()
-  // created_by: string;
+  @ApiProperty({
+    description: 'No KTP of the PIC',
+    example: '1234567890',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  no_ktp?: string;
+
+  @ApiProperty({
+    description: 'No NPWP of the PIC',
+    example: '1234567890',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  no_npwp?: string;
+
+  @ApiProperty({
+    description: 'Username of the PIC',
+    example: 'john_doe',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  username?: string;
+
+  @ApiProperty({
+    description: 'External UUID from backend system',
+    example: 'ext-uuid-123',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  uuid_be?: string;
 }

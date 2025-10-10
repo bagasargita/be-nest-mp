@@ -100,6 +100,14 @@ export class AccountPackageTierService {
       endDate = new Date(updateDto.end_date);
     }
 
+    // Ensure dates are Date objects
+    if (!(startDate instanceof Date)) {
+      startDate = new Date(startDate);
+    }
+    if (!(endDate instanceof Date)) {
+      endDate = new Date(endDate);
+    }
+
     if (startDate >= endDate) {
       throw new BadRequestException('Start date must be before end date');
     }

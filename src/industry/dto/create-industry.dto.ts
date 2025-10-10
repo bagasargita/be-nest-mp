@@ -7,11 +7,13 @@ export class CreateIndustryDto {
     example: 'TECH',
   })
   @IsString()
+  @IsOptional()
   code: string;
 
   @ApiProperty({
     description: 'Name of the industry',
     example: 'Technology',
+    required: true,
   })
   @IsString()
   name: string;
@@ -25,7 +27,11 @@ export class CreateIndustryDto {
   @IsString()
   description?: string;
 
-  @IsOptional()
+  @ApiProperty({
+    description: 'Whether the industry is active',
+    example: true,
+    required: true,
+  })
   @IsBoolean()
-  is_active?: boolean;
+  is_active: boolean;
 }

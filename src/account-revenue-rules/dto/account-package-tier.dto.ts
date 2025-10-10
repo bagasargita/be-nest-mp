@@ -54,6 +54,10 @@ export class CreateAccountPackageTierDto {
   @IsOptional()
   @IsString()
   uuid_be?: string;
+
+  @ApiProperty({ description: 'Percentage status', required: false, default: false })
+  @IsOptional()
+  percentage?: boolean;
 }
 
 export class UpdateAccountPackageTierDto {
@@ -98,4 +102,8 @@ export class UpdateAccountPackageTierDto {
   @IsOptional()
   @IsString()
   uuid_be?: string;
+
+  @ApiProperty({ description: 'Percentage status', required: false, default: false })
+  @IsOptional()
+  percentage?: boolean;
 }

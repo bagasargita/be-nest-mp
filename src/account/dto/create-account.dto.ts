@@ -87,8 +87,13 @@ export class CreateAccountDto {
   @IsBoolean()
   is_active?: boolean;
 
+  @ApiProperty({
+    description: 'External UUID from backend system',
+    example: 'ext-uuid-123',
+    required: false,
+  })
   @IsOptional()
-  @IsBoolean()
+  @IsString()
   uuid_be?: string;
 
   @ApiProperty({
