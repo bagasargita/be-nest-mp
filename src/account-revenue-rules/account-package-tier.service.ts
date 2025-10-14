@@ -13,7 +13,10 @@ export class AccountPackageTierService {
 
   async create(createDto: CreateAccountPackageTierDto, username: string): Promise<AccountPackageTier> {
     // Validate that min_value < max_value
-    if (createDto.min_value >= createDto.max_value) {
+    const minValue = Number(createDto.min_value);
+    const maxValue = Number(createDto.max_value);
+    
+    if (minValue >= maxValue) {
       throw new BadRequestException('Min value must be less than max value');
     }
 
@@ -33,8 +36,8 @@ export class AccountPackageTierService {
         '(tier.min_value <= :maxValue AND tier.max_value >= :minValue) AND ' +
         '(tier.start_date <= :endDate AND tier.end_date >= :startDate)',
         {
-          minValue: createDto.min_value,
-          maxValue: createDto.max_value,
+          minValue: minValue,
+          maxValue: maxValue,
           startDate: createDto.start_date,
           endDate: createDto.end_date,
         }
@@ -82,8 +85,9 @@ export class AccountPackageTierService {
     const packageTier = await this.findOne(id);
 
     // Validate min/max values if provided
-    const minValue = updateDto.min_value ?? packageTier.min_value;
-    const maxValue = updateDto.max_value ?? packageTier.max_value;
+    const minValue = Number(updateDto.min_value ?? packageTier.min_value);
+    const maxValue = Number(updateDto.max_value ?? packageTier.max_value);
+    
     
     if (minValue >= maxValue) {
       throw new BadRequestException('Min value must be less than max value');
@@ -122,8 +126,8 @@ export class AccountPackageTierService {
         '(tier.min_value <= :maxValue AND tier.max_value >= :minValue) AND ' +
         '(tier.start_date <= :endDate AND tier.end_date >= :startDate)',
         {
-          minValue,
-          maxValue,
+          minValue: minValue,
+          maxValue: maxValue,
           startDate: startDate.toISOString().split('T')[0],
           endDate: endDate.toISOString().split('T')[0],
         }
