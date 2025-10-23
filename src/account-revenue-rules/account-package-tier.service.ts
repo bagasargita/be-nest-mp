@@ -65,6 +65,7 @@ export class AccountPackageTierService {
         account_id: accountId,
         is_active: true 
       },
+      relations: ['billing_method'],
       order: { min_value: 'ASC' },
     });
   }

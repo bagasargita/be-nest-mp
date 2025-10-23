@@ -46,4 +46,7 @@ export class AccountBank {
 
   @Column({ type: 'timestamp', nullable: true })
   updated_at: Date;
+
+  @Column({ nullable: true })
+  uuid_be: string;
 }

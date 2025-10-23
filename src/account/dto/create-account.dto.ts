@@ -132,6 +132,15 @@ export class CreateAccountDto {
   @IsString()
   no_npwp?: string;
 
+  @ApiProperty({
+    description: 'Branch UUID from backend system',
+    example: 'ext-uuid-123',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  branch_uuid_be?: string;
+
   // Referral fields
   @ApiProperty({
     description: 'Array of account IDs that referred this account',

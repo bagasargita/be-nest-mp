@@ -91,4 +91,7 @@ export class Account {
 
   @Column({ nullable: true })
   no_npwp: string;
+
+  @Column({ nullable: true })
+  branch_uuid_be: string;
 }
