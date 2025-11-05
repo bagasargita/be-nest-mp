@@ -13,6 +13,16 @@ export class QueryTransactionDepositDto {
   @IsString()
   machine_id?: string;
 
+  @ApiProperty({ description: 'CDM Transaction Number filter', required: false })
+  @IsOptional()
+  @IsString()
+  cdm_trx_no?: string;
+
+  @ApiProperty({ description: 'Code filter', required: false })
+  @IsOptional()
+  @IsString()
+  code?: string;
+
   @ApiProperty({ description: 'Start date filter (YYYY-MM-DD)', required: false })
   @IsOptional()
   @IsDateString()
@@ -41,5 +51,15 @@ export class QueryTransactionDepositDto {
   @IsInt()
   @Min(1)
   limit?: number = 10;
+
+  @ApiProperty({ description: 'Sort field', example: 'cdm_trx_date_time', required: false })
+  @IsOptional()
+  @IsString()
+  sort?: string;
+
+  @ApiProperty({ description: 'Sort order', example: 'DESC', enum: ['ASC', 'DESC'], required: false })
+  @IsOptional()
+  @IsString()
+  order?: 'ASC' | 'DESC';
 }
 
