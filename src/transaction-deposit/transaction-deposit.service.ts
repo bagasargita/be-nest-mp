@@ -172,49 +172,101 @@ export class TransactionDepositService {
       const apiUrl = `${config.base_url}/api/cdt/core/trx/deposit/query`;
       this.logger.log(`🌐 Making request to: ${apiUrl}`);
 
-      // Make API request
+      // Make API request with retry logic for 403 (invalid token)
       let response: any;
-      try {
-        response = await firstValueFrom(
-          this.httpService.get(apiUrl, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      while (retryCount <= maxRetries) {
+        try {
+          // Get fresh token if retrying
+          if (retryCount > 0) {
+            this.logger.log(`🔄 Retry ${retryCount}: Clearing token cache and getting new token...`);
+            this.backendExtService.clearTokenCacheForConfig(targetConfigId);
+            token = await this.backendExtService.getValidToken(targetConfigId, 'admin.internal.read admin.internal.create');
+            this.logger.log('✅ Got new OAuth token for retry');
+          }
+          
+          response = await firstValueFrom(
+            this.httpService.get(apiUrl, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            }),
+          );
+          this.logger.log(`✅ API request successful, status: ${response.status}`);
+          break; // Success, exit retry loop
+        } catch (error) {
+          this.logger.error(`❌ Error making API request (attempt ${retryCount + 1}):`, error);
+          
+          if (error.response) {
+            const status = error.response.status;
+            const errorData = error.response.data;
+            this.logger.error(`Response status: ${status}`);
+            this.logger.error(`Response data: ${JSON.stringify(errorData)}`);
+            
+            // If 403 (Forbidden) and we haven't exceeded max retries, retry with fresh token
+            if (status === 403 && retryCount < maxRetries) {
+              retryCount++;
+              this.logger.warn(`⚠️ Token invalid or expired (403). Retrying with fresh token (attempt ${retryCount + 1}/${maxRetries + 1})...`);
+              
+              // Small delay before retry
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              continue; // Retry with fresh token
+            }
+            
+            // For other errors or max retries reached, throw error
+            throw new HttpException(
+              {
+                message: `Failed to fetch from external API: ${error.message}`,
+                statusCode: status,
+                error: errorData?.error || error.message,
+              },
+              status === 403 ? HttpStatus.UNAUTHORIZED : HttpStatus.BAD_GATEWAY,
+            );
+          }
+          
+          // For non-HTTP errors, throw immediately
+          throw new HttpException(
+            {
+              message: `Failed to fetch from external API: ${error.message}`,
+              error: error.message,
             },
-          }),
-        );
-        this.logger.log(`✅ API request successful, status: ${response.status}`);
-      } catch (error) {
-        this.logger.error('❌ Error making API request:', error);
-        if (error.response) {
-          this.logger.error(`Response status: ${error.response.status}`);
-          this.logger.error(`Response data: ${JSON.stringify(error.response.data)}`);
+            HttpStatus.BAD_GATEWAY,
+          );
         }
-        throw new HttpException(
-          `Failed to fetch from external API: ${error.message}`,
-          HttpStatus.BAD_GATEWAY,
-        );
       }
 
       const transactions = Array.isArray(response.data) ? response.data : response.data?.data || [];
       
       this.logger.log(`📥 Received ${transactions.length} transactions from external API`);
 
-      // Process and save transactions
+      // Process and upsert transactions based on id
       let created = 0;
       let updated = 0;
       let errors = 0;
+      const processedIds = new Set<string>(); // Track processed ids to avoid duplicates in batch
 
       for (const tx of transactions) {
         try {
-          if (!tx.code) {
-            this.logger.warn('⚠️ Skipping transaction without code:', tx);
+          // Check if transaction has required id from external API
+          if (!tx.id) {
+            this.logger.warn('⚠️ Skipping transaction without id:', tx);
             errors++;
             continue;
           }
 
+          // Skip if id already processed (duplicate in batch)
+          if (processedIds.has(tx.id)) {
+            this.logger.warn(`⚠️ Skipping duplicate transaction id in batch: ${tx.id} (code: ${tx.code})`);
+            errors++;
+            continue;
+          }
+
+          // Find existing transaction by id
           const existingTx = await this.repo.findOne({
-            where: { code: tx.code },
+            where: { id: tx.id },
           });
 
           const txData: CreateTransactionDepositDto = {
@@ -241,19 +293,26 @@ export class TransactionDepositService {
           };
 
           if (existingTx) {
-            // Update existing
-            await this.repo.update({ code: tx.code }, txData);
+            // Update existing transaction
+            Object.assign(existingTx, txData);
+            await this.repo.save(existingTx);
             updated++;
-            this.logger.debug(`✅ Updated transaction: ${tx.code}`);
+            this.logger.debug(`✅ Updated transaction: ${tx.id} (code: ${tx.code})`);
           } else {
-            // Create new
-            const newTx = this.repo.create(txData);
+            // Create new transaction with id from external API
+            const newTx = this.repo.create({
+              ...txData,
+              id: tx.id, // Use id from external API
+            });
             await this.repo.save(newTx);
             created++;
-            this.logger.debug(`✅ Created transaction: ${tx.code}`);
+            this.logger.debug(`✅ Created transaction: ${tx.id} (code: ${tx.code})`);
           }
-        } catch (error) {
-          this.logger.error(`❌ Error processing transaction ${tx?.code || 'unknown'}:`, error.message);
+          
+          // Mark as processed
+          processedIds.add(tx.id);
+        } catch (error: any) {
+          this.logger.error(`❌ Error processing transaction ${tx?.id || tx?.code || 'unknown'}:`, error.message);
           this.logger.error('Error stack:', error.stack);
           errors++;
         }

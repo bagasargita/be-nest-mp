@@ -12,7 +12,7 @@ export class TransactionDeposit {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'varchar', length: 255, unique: false })
   @Index()
   code: string;
 
