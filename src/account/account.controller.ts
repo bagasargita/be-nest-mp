@@ -6,7 +6,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { 
   ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiBody,
-  ApiConsumes
+  ApiConsumes, ApiQuery
 } from '@nestjs/swagger';
 import { Response } from 'express';
 import { JwtAuthGuard } from 'src/infrastructure/guards/auth.guard';
@@ -285,5 +285,16 @@ export class AccountController {
   @ApiResponse({ status: HttpStatus.OK, description: 'Vendor details deleted successfully' })
   async deleteVendorDetails(@Param('id', ParseUUIDPipe) accountId: string) {
     return this.service.deleteVendorDetails(accountId);
+  }
+
+  @Post(':id/vendor-details/sync')
+  @ApiOperation({ summary: 'Sync vendor details to external API' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Vendor synced successfully' })
+  @ApiQuery({ name: 'config_id', required: false, description: 'Backend-ext config ID (optional, defaults to hardcoded)' })
+  async syncVendorToExternalApi(
+    @Param('id', ParseUUIDPipe) accountId: string,
+    @Query('config_id') configId?: string
+  ) {
+    return this.service.syncVendorToExternalApi(accountId, configId);
   }
 }

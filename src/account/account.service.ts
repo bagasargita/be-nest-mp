@@ -13,10 +13,13 @@ import { MassUploadResultDto, AccountCsvRowDto, SuccessfulAccountDto } from './d
 import { AccountAddressService } from '../account-address/account-address.service';
 import { AccountPICService } from '../account-pic/account-pic.service';
 import { AccountBankService } from '../account-bank/account-bank.service';
+import { BackendExtService } from '../backend-ext/backend-ext.service';
+import { ExternalApiRequestDto } from '../backend-ext/dto/oauth-token.dto';
 import { TypeOfBusiness } from '../type-of-business/entities/type-of-business.entity';
 import { Industry } from '../industry/entities/industry.entity';
 import { AccountType } from '../accounttype/entities/accounttype.entity';
 import { AccountCategory } from '../account-category/entities/account-category.entity';
+import { Logger, HttpException, HttpStatus } from '@nestjs/common';
 
 @Injectable()
 export class AccountService {
@@ -40,6 +43,7 @@ export class AccountService {
     private readonly accountAddressService: AccountAddressService,
     private readonly accountPICService: AccountPICService,
     private readonly accountBankService: AccountBankService,
+    private readonly backendExtService: BackendExtService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -923,6 +927,149 @@ export class AccountService {
     const result = await this.vendorRepo.delete({ account_id: accountId });
     if (result.affected === 0) {
       throw new NotFoundException(`Vendor details for account ${accountId} not found`);
+    }
+  }
+
+  // Sync Vendor to External API
+  async syncVendorToExternalApi(accountId: string, configId?: string): Promise<any> {
+    const logger = new Logger(AccountService.name);
+    
+    try {
+      logger.log(`🔄 Starting vendor sync for account: ${accountId}`);
+
+      // Get account data
+      const account = await this.repo.findOne({
+        where: { id: accountId },
+      });
+
+      if (!account) {
+        throw new NotFoundException(`Account with id ${accountId} not found`);
+      }
+
+      // Get vendor details
+      const vendorDetails = await this.getVendorDetails(accountId);
+      if (!vendorDetails) {
+        throw new BadRequestException('Vendor details not found. Please create vendor details first.');
+      }
+
+      // Validate required fields
+      if (!vendorDetails.email) {
+        throw new BadRequestException('Vendor email is required');
+      }
+      if (!vendorDetails.phone) {
+        throw new BadRequestException('Vendor phone is required');
+      }
+      if (!account.no_npwp) {
+        throw new BadRequestException('Account NPWP is required');
+      }
+
+      // Validate phone format (+62)
+      if (!vendorDetails.phone.startsWith('+62')) {
+        throw new BadRequestException('Phone number must start with +62');
+      }
+
+      // Get primary address
+      const addresses = await this.accountAddressService.findByAccountId(accountId);
+      const primaryAddress = addresses.find(addr => addr.is_primary === true) || addresses[0];
+
+      if (!primaryAddress) {
+        throw new BadRequestException('Primary address is required');
+      }
+
+      // Get vendor types array and convert to boolean flags
+      const vendorTypes = Array.isArray(vendorDetails.vendor_type) 
+        ? vendorDetails.vendor_type 
+        : vendorDetails.vendor_type 
+          ? [vendorDetails.vendor_type] 
+          : [];
+
+      // Transform vendor types to lowercase for comparison
+      const vendorTypesLower = vendorTypes.map(t => String(t).toLowerCase());
+
+      // Prepare vendor data for external API
+      const vendorData = {
+        name: account.name || '',
+        npwp: account.no_npwp || '',
+        email: vendorDetails.email,
+        phone: vendorDetails.phone,
+        supplier: vendorTypesLower.includes('supplier'),
+        maintenance: vendorTypesLower.includes('maintenance'),
+        pjpur: vendorTypesLower.includes('pjpur'),
+        gateway: vendorTypesLower.includes('gateway'),
+        address: {
+          building: primaryAddress.address1 || '',
+          street: primaryAddress.address2 || '',
+          region: primaryAddress.sub_district || '',
+          city: primaryAddress.city || '',
+          state: primaryAddress.province || '',
+          country: primaryAddress.country || 'Indonesia',
+          zip_code: primaryAddress.postalcode || '',
+        },
+      };
+
+      // Determine if POST or PUT based on vendor_uuid_be
+      const isUpdate = vendorDetails.vendor_uuid_be && vendorDetails.vendor_uuid_be !== '';
+      const method: 'POST' | 'PUT' = isUpdate ? 'PUT' : 'POST';
+      const url = isUpdate 
+        ? `/api/vendor/${vendorDetails.vendor_uuid_be}`
+        : '/api/vendor';
+
+      // Hardcoded config ID as requested
+      const targetConfigId = configId || '473b8ffa-9c2e-4384-b5dc-dd2af3c1f0f9';
+
+      logger.log(`🌐 Making ${method} request to: ${url} for account: ${accountId}`);
+
+      // Make authenticated request using BackendExtService
+      const apiRequest: ExternalApiRequestDto = {
+        config_id: targetConfigId,
+        method: method,
+        url: url,
+        data: vendorData,
+        scope: 'admin.internal.read admin.internal.create',
+      };
+
+      const response = await this.backendExtService.makeAuthenticatedRequest(
+        apiRequest,
+        undefined, // userId (optional)
+        accountId // accountId for logging
+      );
+
+      // Extract vendor UUID from response if it's a POST (create)
+      if (!isUpdate && response) {
+        const vendorId = response?.data?.id || 
+                        response?.id || 
+                        response?.data?.data?.id;
+        
+        if (vendorId) {
+          // Update vendor_details with vendor_uuid_be
+          vendorDetails.vendor_uuid_be = vendorId;
+          await this.vendorRepo.save(vendorDetails);
+          logger.log(`✅ Updated vendor_uuid_be: ${vendorId}`);
+        }
+      }
+
+      logger.log(`✅ Vendor sync completed successfully for account: ${accountId}`);
+
+      return {
+        success: true,
+        message: `Vendor ${isUpdate ? 'updated' : 'created'} successfully`,
+        data: response,
+        vendorData: vendorData,
+      };
+    } catch (error) {
+      logger.error(`❌ Vendor sync failed for account ${accountId}:`, error);
+      
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          message: 'Failed to sync vendor to external API',
+          error: error.message || 'Unknown error',
+        },
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

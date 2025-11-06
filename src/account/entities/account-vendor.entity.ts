@@ -21,8 +21,8 @@ export class AccountVendor {
   @Column()
   account_id: string;
 
-  @Column({ length: 50, nullable: true })
-  vendor_type: string;
+  @Column({ type: 'jsonb', nullable: true })
+  vendor_type: string[]; // Array: PJPUR, Gateway, Supplier, Maintenance
 
   @Column({ length: 50, nullable: true })
   vendor_classification: string;
@@ -47,6 +47,15 @@ export class AccountVendor {
 
   @Column({ type: 'text', nullable: true })
   certification: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  email: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  phone: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  vendor_uuid_be: string; // UUID from external API
 
   @Column({ default: true })
   is_active: boolean;

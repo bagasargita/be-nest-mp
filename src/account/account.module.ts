@@ -13,6 +13,7 @@ import { AccountCategory } from '../account-category/entities/account-category.e
 import { AccountAddressModule } from '../account-address/account-address.module';
 import { AccountPICModule } from '../account-pic/account-pic.module';
 import { AccountBankModule } from '../account-bank/account-bank.module';
+import { BackendExtModule } from '../backend-ext/backend-ext.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AccountBankModule } from '../account-bank/account-bank.module';
     AccountAddressModule,
     AccountPICModule,
     AccountBankModule,
+    BackendExtModule,
   ],
   controllers: [AccountController],
   providers: [AccountService],
