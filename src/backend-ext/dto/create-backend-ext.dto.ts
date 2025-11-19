@@ -12,7 +12,7 @@ export class CreateBackendExtDto {
 
   @ApiProperty({
     description: 'External API base URL',
-    example: 'http://test-stg01.merahputih-id.tech:5002',
+    example: 'http://stg.merahputih-id.tech:5002',
   })
   @IsString()
   @IsNotEmpty()
@@ -20,7 +20,7 @@ export class CreateBackendExtDto {
 
   @ApiProperty({
     description: 'OAuth token URL (if different from base_url)',
-    example: 'http://test-stg01.merahputih-id.tech:9002/oauth/token',
+    example: 'http://stg.merahputih-id.tech:9002/oauth/token',
     required: false,
   })
   @IsString()
