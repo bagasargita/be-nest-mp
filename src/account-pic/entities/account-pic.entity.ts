@@ -54,6 +54,24 @@ export class AccountPIC {
   @Column({ type: 'varchar', length: 100, nullable: true })
   username?: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  password?: string;
+
   @Column({ type: 'varchar', length: 255, nullable: true })
   uuid_be?: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  role_access: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  role_access_mobile: string;
+
+  @Column({ type: 'boolean', default: false, nullable: true })
+  web_portal: boolean;
+
+  @Column({ type: 'boolean', default: false, nullable: true })
+  mobile: boolean;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  role: string;
 }

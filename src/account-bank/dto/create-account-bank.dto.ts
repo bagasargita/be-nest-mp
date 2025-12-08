@@ -34,21 +34,27 @@ export class CreateAccountBankDto {
   @ApiProperty({
     description: 'Bank account holder name',
     example: 'John Doe',
+    required: false,
   })
+  @IsOptional()
   @IsString()
   bank_account_holder_name?: string;
 
   @ApiProperty({
     description: 'Bank account holder firstname',
     example: 'John',
+    required: false,
   })
+  @IsOptional()
   @IsString()
   bank_account_holder_firstname?: string;
   
   @ApiProperty({
     description: 'Bank account holder lastname',
     example: 'Doe',
+    required: false,
   })
+  @IsOptional()
   @IsString()
   bank_account_holder_lastname?: string;
 

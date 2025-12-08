@@ -61,6 +61,16 @@ export class AccountPICService {
     if (dto.account_id) updateData.account = { id: dto.account_id };
     if (dto.position_id) updateData.position = { id: dto.position_id };
     
+    // Only update password if it's provided and not empty
+    // If password is not provided or empty, don't include it in updateData
+    // so the existing password will be preserved
+    if (dto.password !== undefined && dto.password !== null && dto.password.trim() !== '') {
+      updateData.password = dto.password;
+    } else {
+      // Remove password from updateData to preserve existing password
+      delete updateData.password;
+    }
+    
     const accountPIC = await this.repo.preload({
       id: id,
       ...updateData,

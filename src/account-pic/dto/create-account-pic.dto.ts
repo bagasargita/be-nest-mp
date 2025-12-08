@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, IsNotEmpty } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsNotEmpty, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateAccountPICDto {
@@ -94,6 +94,15 @@ export class CreateAccountPICDto {
   username?: string;
 
   @ApiProperty({
+    description: 'Password of the PIC',
+    example: 'password123',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  password?: string;
+
+  @ApiProperty({
     description: 'External UUID from backend system',
     example: 'ext-uuid-123',
     required: false,
@@ -101,4 +110,53 @@ export class CreateAccountPICDto {
   @IsOptional()
   @IsString()
   uuid_be?: string;
+
+  @ApiProperty({
+    description: 'Role access level',
+    example: 'ADMIN',
+    required: true,
+    enum: ['ADMIN', 'SUPER_ADMIN'],
+  })
+  @IsNotEmpty()
+  @IsString()
+  @IsIn(['ADMIN', 'SUPER_ADMIN'])
+  role_access: string;
+
+  @ApiProperty({
+    description: 'Mobile role access level',
+    example: 'CUSTOMER',
+    required: true,
+    enum: ['CUSTOMER', 'MESIN', 'NON_MESIN'],
+  })
+  @IsNotEmpty()
+  @IsString()
+  @IsIn(['CUSTOMER', 'MESIN', 'NON_MESIN'])
+  role_access_mobile: string;
+
+  @ApiProperty({
+    description: 'Indicates if user has web portal access',
+    example: true,
+    required: true,
+  })
+  @IsBoolean()
+  web_portal: boolean;
+
+  @ApiProperty({
+    description: 'Indicates if user has mobile access',
+    example: true,
+    required: true,
+  })
+  @IsBoolean()
+  mobile: boolean;
+
+  @ApiProperty({
+    description: 'Role of the PIC',
+    example: 'LOCATION_PARTNER',
+    required: true,
+    enum: ['LOCATION_PARTNER', 'NETWORK_OWNER', 'DEDICATED'],
+  })
+  @IsNotEmpty()
+  @IsString()
+  @IsIn(['LOCATION_PARTNER', 'NETWORK_OWNER', 'DEDICATED'])
+  role: string;
 }

@@ -36,6 +36,7 @@ import { BackendExtModule } from './backend-ext/backend-ext.module';
 import { PublishedPackageTierModule } from './published-package-tier/published-package-tier.module';
 import { MasterPaymentGatewayModule } from './master-payment-gateway/master-payment-gateway.module';
 import { TransactionDepositModule } from './transaction-deposit/transaction-deposit.module';
+import { MasterMachineModule } from './master-machine/master-machine.module';
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ import { TransactionDepositModule } from './transaction-deposit/transaction-depo
     PublishedPackageTierModule,
     MasterPaymentGatewayModule,
     TransactionDepositModule,
+    MasterMachineModule,
   ],
   providers: [
     {

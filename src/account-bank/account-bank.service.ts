@@ -34,12 +34,22 @@ export class AccountBankService {
   }
 
   async create(dto: CreateAccountBankDto, username: string): Promise<AccountBank> {
+    // Build bank_account_holder_name from firstname and lastname if provided
+    let bankAccountHolderName = dto.bank_account_holder_name;
+    if (!bankAccountHolderName && (dto.bank_account_holder_firstname || dto.bank_account_holder_lastname)) {
+      const parts = [
+        dto.bank_account_holder_firstname,
+        dto.bank_account_holder_lastname
+      ].filter(part => part && part.trim() !== '');
+      bankAccountHolderName = parts.length > 0 ? parts.join(' ') : undefined;
+    }
+    
     const entity = this.repo.create({
       ...dto,
       account: { id: dto.account_id } as any,
       bank: { id: dto.bank_id } as any,
       bank_category: dto.bank_category_id ? { id: dto.bank_category_id } : undefined,
-      bank_account_holder_name: `${dto.bank_account_holder_firstname} ${dto.bank_account_holder_lastname}`,
+      bank_account_holder_name: bankAccountHolderName,
       created_by: username,
       created_at: new Date(),
     });
@@ -47,12 +57,27 @@ export class AccountBankService {
   }
 
   async update(id: string, dto: UpdateAccountBankDto, username: string): Promise<AccountBank> {
+    // Build bank_account_holder_name from firstname and lastname if provided
+    let bankAccountHolderName = dto.bank_account_holder_name;
+    if (!bankAccountHolderName && (dto.bank_account_holder_firstname || dto.bank_account_holder_lastname)) {
+      const parts = [
+        dto.bank_account_holder_firstname,
+        dto.bank_account_holder_lastname
+      ].filter(part => part && part.trim() !== '');
+      bankAccountHolderName = parts.length > 0 ? parts.join(' ') : undefined;
+    }
+    
     const updateData: any = {
       ...dto,
-      bank_account_holder_name: `${dto.bank_account_holder_firstname} ${dto.bank_account_holder_lastname}`,
       updated_by: username,
       updated_at: new Date(),
     };
+    
+    // Only set bank_account_holder_name if we have a value
+    if (bankAccountHolderName !== undefined) {
+      updateData.bank_account_holder_name = bankAccountHolderName;
+    }
+    
     if (dto.account_id) updateData.account = { id: dto.account_id };
     if (dto.bank_id) updateData.bank = { id: dto.bank_id };
     if (dto.bank_category_id) updateData.bank_category = { id: dto.bank_category_id };

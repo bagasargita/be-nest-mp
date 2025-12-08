@@ -86,12 +86,12 @@ export class Account {
   @Column({ type: 'varchar', length: 255, nullable: true })
   uuid_be?: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   no_ktp: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   no_npwp: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   branch_uuid_be: string;
 }
