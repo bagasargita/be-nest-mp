@@ -10,6 +10,7 @@ interface FindAllParams {
   limit?: number;
   code?: string;
   name?: string;
+  description?: string;
   is_active?: boolean;
   sort?: string;
   order?: 'ASC' | 'DESC';
@@ -29,6 +30,7 @@ export class IndustryService {
         limit = 10,
         code,
         name,
+        description,
         is_active,
         sort,
         order = 'ASC'
@@ -45,6 +47,10 @@ export class IndustryService {
       
       if (name) {
         queryBuilder.andWhere('industry.name ILIKE :name', { name: `%${name}%` });
+      }
+      
+      if (description) {
+        queryBuilder.andWhere('industry.description ILIKE :description', { description: `%${description}%` });
       }
       
       if (is_active !== undefined) {

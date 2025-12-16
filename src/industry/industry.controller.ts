@@ -17,6 +17,7 @@ export class IndustryController {
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of items per page' })
   @ApiQuery({ name: 'code', required: false, type: String, description: 'Filter by industry code' })
   @ApiQuery({ name: 'name', required: false, type: String, description: 'Filter by industry name' })
+  @ApiQuery({ name: 'description', required: false, type: String, description: 'Filter by industry description' })
   @ApiQuery({ name: 'is_active', required: false, type: Boolean, description: 'Filter by active status' })
   @ApiQuery({ name: 'sort', required: false, type: String, description: 'Field to sort by' })
   @ApiQuery({ name: 'order', required: false, enum: ['ASC', 'DESC'], description: 'Sort order' })
@@ -25,6 +26,7 @@ export class IndustryController {
     @Query('limit') limit?: number,
     @Query('code') code?: string,
     @Query('name') name?: string,
+    @Query('description') description?: string,
     @Query('is_active') is_active?: boolean,
     @Query('sort') sort?: string,
     @Query('order') order?: 'ASC' | 'DESC',
@@ -34,6 +36,7 @@ export class IndustryController {
       limit: limit ? Number(limit) : 10,
       code,
       name,
+      description,
       is_active,
       sort,
       order,
